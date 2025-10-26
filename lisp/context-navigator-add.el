@@ -138,11 +138,13 @@ Always return a list of regular files (absolute paths) or '() on error."
                           (context-navigator-human-size (context-navigator-add-file-size f)))))
         (goto-char (point-min))
         (view-mode 1)))
-    (display-buffer buf '((display-buffer-pop-up-window)))
-    (unwind-protect
-        (context-navigator-ui-ask :confirm-add total)
-      (when (buffer-live-p buf)
-        (kill-buffer buf)))))
+    (let ((win (display-buffer buf '((display-buffer-pop-up-window)))))
+      (unwind-protect
+          (context-navigator-ui-ask :confirm-add total)
+        (when (window-live-p win)
+          (delete-window win))
+        (when (buffer-live-p buf)
+          (kill-buffer buf))))))
 
 ;; ---------------- Pure-ish builders ----------------
 

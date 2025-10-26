@@ -1041,12 +1041,15 @@ Respects case sensitivity and dotfiles rule."
         (dolist (f files)
           (insert (format "  %s\n" (abbreviate-file-name f))))
         (goto-char (point-min))
-        (view-mode 1)))
-    (display-buffer buf '((display-buffer-pop-up-window)))
-    (unwind-protect
-        (context-navigator-ui-ask :confirm-add (length files))
-      (when (buffer-live-p buf)
-        (kill-buffer buf)))))
+        (view-mode 1))
+      (let ((win (display-buffer buf '((display-buffer-pop-up-window)))))
+        (unwind-protect
+            (context-navigator-ui-ask :confirm-add (length files))
+          (when (window-live-p win)
+            (delete-window win))
+          (when (buffer-live-p buf)
+            (kill-buffer buf)))))))
+
 
 (cl-defun context-navigator-add-files-from-mask (pattern &optional _interactive)
   "Resolve PATTERN (glob) to files and add them to the model with preview when needed."
