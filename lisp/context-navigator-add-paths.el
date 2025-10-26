@@ -1042,11 +1042,16 @@ Respects case sensitivity and dotfiles rule."
           (insert (format "  %s\n" (abbreviate-file-name f))))
         (goto-char (point-min))
         (view-mode 1))
-      (let ((win (display-buffer buf '((display-buffer-pop-up-window)))))
+      (save-window-excursion
+        (display-buffer
+         buf
+         '((display-buffer-in-side-window)
+           (side . bottom)
+           (window-height . fit-window-to-buffer)
+           (window-parameters . ((no-other-window . t)
+                                 (no-delete-other-windows . t)))))
         (unwind-protect
             (context-navigator-ui-ask :confirm-add (length files))
-          (when (window-live-p win)
-            (delete-window win))
           (when (buffer-live-p buf)
             (kill-buffer buf)))))))
 
