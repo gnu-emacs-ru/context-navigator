@@ -36,6 +36,16 @@ Disabled by default to avoid extra hooks in performance-sensitive setups."
   "Debounce delay (seconds) before refitting all splits after a layout change."
   :type 'number :group 'context-navigator-splits-refit)
 
+(defcustom context-navigator-splits-respect-manual-resize t
+  "When non-nil, do not shrink split windows during auto-refit if a user enlarged them manually.
+Auto-refit will only grow a split up to its desired minimal height; manual enlargements are preserved."
+  :type 'boolean :group 'context-navigator-splits-refit)
+
+(defcustom context-navigator-splits-extra-margin-lines 1
+  "Extra safety margin (in text lines) to add when auto-fitting split windows.
+Helps avoid occasional clipping due to rounding/tab-line headers."
+  :type 'integer :group 'context-navigator-splits-refit)
+
 (defun cnsr--nav-window ()
   "Return a live Navigator window if any."
   (cl-loop for w in (window-list nil 'no-minibuf)
@@ -65,21 +75,29 @@ Disabled by default to avoid extra hooks in performance-sensitive setups."
   (max 1 (floor (/ (window-total-height w) 2))))
 
 (defun cnsr--fit-one (win navw)
-  "Fit WIN to its content, clamped by half-height of NAVW when available."
+  "Fit WIN to its content, clamped by half-height of NAVW when available.
+Respects manual enlargements when =context-navigator-splits-respect-manual-resize' is non-nil:
+- only grows the window up to the minimal desired height;
+- does not shrink it back if the user made it taller."
   (when (window-live-p win)
-    (let* ((content (cnsr--content-lines win))
+    (let/ ((content (cnsr--content-lines win))
            (half    (if (and navw (window-live-p navw))
                         (cnsr--half-of navw)
                       most-positive-fixnum))
-           (desired (min content half)))
-      ;; Allow resizing first, then fit, then fix height and preserve it to stabilize.
-      (set-window-parameter win 'window-size-fixed nil)
-      (set-window-parameter win 'window-preserved-size nil)
-      ;; Fit with explicit max (desired) and min 1 line.
-      (ignore-errors (fit-window-to-buffer win desired 1))
-      ;; Preserve the resulting height and fix it so later rebalancing won't inflate it.
-      (set-window-parameter win 'window-preserved-size (cons t (window-total-height win)))
-      (set-window-parameter win 'window-size-fixed 'height))))
+           (margin  (max 0 (or context-navigator-splits-extra-margin-lines 0)))
+           (desired (min (+ content margin) half))
+           (respect (if (boundp 'context-navigator-splits-respect-manual-resize)
+                        context-navigator-splits-respect-manual-resize
+                      t))
+           (cur (window-total-height win)))
+          ;; Unlock preserved-size; we never hard-fix window height to keep manual resize possible.
+          (set-window-parameter win 'window-size-fixed nil)
+          (set-window-parameter win 'window-preserved-size nil)
+          ;; Only grow up to desired when respecting manual resize; otherwise fit unconditionally.
+          (when (or (not respect) (< cur desired))
+            (ignore-errors (fit-window-to-buffer win desired 1)))
+          ;; Preserve whatever height we ended up with to stabilize layout rebalancing.
+          (set-window-parameter win 'window-preserved-size (cons t (window-total-height win))))))
 
 (defun context-navigator-splits-refit-all ()
   "Refit all visible Navigator splits to their content."

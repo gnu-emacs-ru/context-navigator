@@ -262,8 +262,8 @@ Also schedule a refit of all splits to their content after any window layout cha
 
 (defun context-navigator-stats-split--fit-window (win navw)
   "Fit WIN height to content, constrained by NAVW half-height and user preference.
-Temporarily unlock window height to allow shrinking, then lock height so later
-window rebalancing (e.g., when opening another split) won't inflate it."
+Respects manual enlargements: only grows to the minimal desired height,
+does not shrink if the user made the window taller."
   (when (and (window-live-p win) (window-live-p navw))
     (let* ((base-pref (max 1 (or context-navigator-stats-split-height 5)))
            ;; В режиме Types учитываем ещё +1 строку (итого +2 к базовой), чтобы таблица полностью помещалась
@@ -278,16 +278,23 @@ window rebalancing (e.g., when opening another split) won't inflate it."
                        (max 1 (count-lines (point-min) (point-max)))))
            ;; +2 к контенту для Types, чтобы последняя строка таблицы не обрезалась
            (eff-content (+ content extra))
-           (desired  (min eff-content (min max-pref half)))
+           (margin   (max 0 (or (and (boundp 'context-navigator-splits-extra-margin-lines)
+                                     context-navigator-splits-extra-margin-lines)
+                                0)))
+           (desired  (min (+ eff-content margin) (min max-pref half)))
+           (respect  (if (boundp 'context-navigator-splits-respect-manual-resize)
+                         context-navigator-splits-respect-manual-resize
+                       t))
+           (cur (window-total-height win))
            (window-combination-resize t))
-      ;; Allow resizing first, then fix height so other operations don't enlarge it.
+      ;; Не фиксируем высоту — оставляем возможность ручного ресайза.
       (set-window-parameter win 'window-size-fixed nil)
       (set-window-parameter win 'window-preserved-size nil)
-      ;; Минимум 1 строка, максимум — desired
-      (fit-window-to-buffer win desired 1)
-      ;; Preserve final height and fix it to avoid later inflation.
-      (set-window-parameter win 'window-preserved-size (cons t (window-total-height win)))
-      (set-window-parameter win 'window-size-fixed 'height))))
+      ;; Только увеличиваем до минимально достаточной высоты (или всегда подгоняем, если respect=nil).
+      (when (or (not respect) (< cur desired))
+        (fit-window-to-buffer win desired 1))
+      ;; Стабилизируем текущую высоту от автоматической ребалансировки.
+      (set-window-parameter win 'window-preserved-size (cons t (window-total-height win))))))
 
 (defun context-navigator-stats-split--ensure-buffer ()
   "Create or return the Stats buffer initialized to special-mode."

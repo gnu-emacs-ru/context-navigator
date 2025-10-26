@@ -124,14 +124,22 @@ with surrounding item text and appear visually centered."
 When PREFER-ICONS is non-nil and an icon provider is available, use icons;
 otherwise fall back to a colored text bullet.
 
-- present → green ●
-- absent  → gray  ○
+- present → green ● (or [X] in TTY when text style)
+- absent  → gray  ○ (or [ ] in TTY when text style)
 
 The visual size and vertical alignment of text bullets are adjusted so the
-indicator sits centered and appears moderately large relative to item text."
-  (let* ((use-icons (and prefer-icons (fboundp 'context-navigator-icons-for-indicator)))
+indicator sits centered and appears moderately large relative to item text.
+In non-graphical (TTY/batch) displays and when PREFER-ICONS is nil (text style),
+return ASCII checkboxes: [X] or [ ]."
+  (let* ((tty (not (display-graphic-p)))
+         (use-icons (and prefer-icons (fboundp 'context-navigator-icons-for-indicator)))
          (state (if present 'ok 'absent)))
     (cond
+     ;; Text style in TTY/batch: use ASCII checkboxes
+     ((and (not use-icons) tty)
+      (if present "[X]" "[ ]"))
+
+     ;; Icons preferred: try icons; fallback to colored bullets
      (use-icons
       (let ((icon (ignore-errors (context-navigator-icons-for-indicator state))))
         (if (and (stringp icon) (> (length icon) 0))
@@ -142,6 +150,7 @@ indicator sits centered and appears moderately large relative to item text."
                         'face (list :foreground color :height 0.75)
                         'display '(raise 0.08))))))
 
+     ;; Text bullets (graphical or when icons not preferred)
      (t
       (let* ((raw (if present "●" "○"))
              (color (if present "green4" "gray")))

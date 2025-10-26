@@ -17,14 +17,14 @@
     (should-not (string-match-p "○" line))))
 
 (ert-deftest ctxnav-render/indicator-style-text-bullets ()
-  "When style is 'text and keys present, colored bullets should be used."
+  "When style is 'text and keys present, show ASCII '[X]' indicator."
   (let* ((it (context-navigator-item-create :type 'file :path "/tmp/b" :name "b" :enabled t))
          (context-navigator-render-indicator-style 'text)
          (context-navigator-render--gptel-keys (list (context-navigator-model-item-key it)))
          (lines (context-navigator-render-build-item-lines (list it) nil 40))
          (line (car lines)))
     (should (stringp line))
-    (should (string-match-p "●" line))))
+    (should (string-match-p "\\[X\\]" line))))
 
 (ert-deftest ctxnav-render/indicator-style-icons-fallback-to-text ()
   "When style is icons/auto but icon provider yields nil, fallback to text bullets."

@@ -82,8 +82,6 @@
     (:id logs-toggle-file :cmd context-navigator-log-toggle-file-persistence
          :keys ("F") :contexts (global) :section logs :desc-key :tr-logs-toggle-file)
 
-
-
     ;; Navigate (items/groups)
     (:id next :cmd context-navigator-view-next-item
          :keys ("j" "n" "<down>") :contexts (items groups-split) :section navigate :desc-key :help-next-item)

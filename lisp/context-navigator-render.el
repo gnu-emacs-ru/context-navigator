@@ -30,7 +30,7 @@
   "Max display length for item names."
   :type 'integer :group 'context-navigator-render)
 
-(defcustom context-navigator-render-indicator-style 'text
+(defcustom context-navigator-render-indicator-style 'auto
   "Indicator style for item activity lamps:
 - auto  : use icons when available, otherwise text bullets
 - icons : force icon glyphs (requires all-the-icons); fallback to text if unavailable
@@ -103,12 +103,12 @@ Respects =context-navigator-render-indicator-style':
 - icons/auto → try icons, fallback to text
 - text  → force text bullet
 
-In TTY (non-graphical) display, always show ASCII checkboxes: [X] or [ ]."
+In TTY (non-graphical) display:
+- text style → ASCII checkboxes: [X] or [ ]
+- icons/auto → text bullets (●/○) via fallback when icons are unavailable."
   (let ((style (or context-navigator-render-indicator-style 'auto)))
     (cond
      ((eq style 'off) nil)
-     ((not (display-graphic-p))
-      (if present "[X]" "[ ]"))
      ((eq style 'text)
       (context-navigator-indicator-string present nil))
      (t

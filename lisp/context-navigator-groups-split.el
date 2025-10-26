@@ -387,23 +387,32 @@ Always return focus to the items list in the Navigator."
 
 (defun context-navigator-groups-split--fit-window (win navw)
   "Fit WIN to buffer with constraints relative to NAVW.
-Temporarily unlock window height to allow shrinking, then lock it, so opening
-another split won't inflate this one."
+Respects manual enlargements when possible: only grows up to minimal desired height,
+does not shrink if the user made the window taller."
   (when (and (window-live-p win) (window-live-p navw))
     (let* ((max-pref (max 1 (or context-navigator-groups-split-height 10)))
            (half     (max 1 (floor (/ (window-total-height navw) 2))))
            ;; Реальная высота контента буфера (в строках)
            (content  (with-current-buffer (window-buffer win)
                        (max 1 (count-lines (point-min) (point-max)))))
-           (desired  (min content (min max-pref half)))
+           (margin   (max 0 (or (and (boundp 'context-navigator-splits-extra-margin-lines)
+                                     context-navigator-splits-extra-margin-lines)
+                                0)))
+           (desired  (min (+ content margin) (min max-pref half)))
+           (respect  (if (boundp 'context-navigator-splits-respect-manual-resize)
+                         context-navigator-splits-respect-manual-resize
+                       t))
+           (cur (window-total-height win))
            (window-combination-resize t))
+      ;; Не фиксируем высоту — оставляем возможность ручного ресайза.
       (set-window-parameter win 'window-size-fixed nil)
       (set-window-parameter win 'window-preserved-size nil)
-      ;; Минимум 1 строка, максимум — desired
-      (fit-window-to-buffer win desired 1)
-      ;; Сохранить итоговую высоту и зафиксировать, чтобы ребалансировка не раздувала
-      (set-window-parameter win 'window-preserved-size (cons t (window-total-height win)))
-      (set-window-parameter win 'window-size-fixed 'height))))
+      ;; Только увеличиваем до минимально достаточной высоты (или всегда подгоняем, если respect=nil).
+      (when (or (not respect) (< cur desired))
+        (fit-window-to-buffer win desired 1))
+      ;; Стабилизируем высоту для авто-ребалансировки, но не запрещаем ручной ресайз.
+      (set-window-parameter win 'window-preserved-size (cons t (window-total-height win))))))
+
 
 (defun context-navigator-groups-split--render ()
   "Render groups list lines into the split buffer, focus current group, and fit height."
@@ -450,9 +459,9 @@ another split won't inflate this one."
                   (goto-char pos)
                   (beginning-of-line)
                   (set-window-point win (point))))))
-      ;; Fit height after rendering
-      (when-let ((navw (context-navigator-groups-split--nav-window)))
-        (context-navigator-groups-split--fit-window win navw)))))))
+          ;; Fit height after rendering
+          (when-let ((navw (context-navigator-groups-split--nav-window)))
+            (context-navigator-groups-split--fit-window win navw)))))))
 
 (provide 'context-navigator-groups-split)
 ;;; context-navigator-groups-split.el ends here
