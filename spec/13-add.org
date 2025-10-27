@@ -1,0 +1,130 @@
+Title: Context Navigator — 13 Universal Add (Dired/Region/File/Buffer)
+Status: Normative
+Version: 1.0
+
+§13.1 Purpose and sources
+- Provide a unified user flow for adding context entries (items) from multiple sources:
+  - Dired selection (files and/or directories)
+  - Active region (selection item)
+  - Current file (file item)
+  - Current buffer (buffer item)
+- Safety, deduplication, and responsiveness are prioritized; GPTel apply is optional and gated by session flag (§02.7/§02.8).
+
+§13.2 Filesystem policy (CN-ADD-FS-POLICY)
+- Regular files only:
+  - Include only regular files; skip non-regular entries (directories, devices, fifos, sockets).
+  - Symlinks are treated as non-regular and skipped (counted in :skipped-nonregular).
+- Recursion:
+  - For directories, enumerate descendants recursively; collect only regular files (implementation uses directory-files-recursively with a regular-file predicate).
+- Size limit:
+  - Skip files larger than context-navigator-max-file-size; count as :skipped-too-big.
+- Remote/TRAMP:
+  - Track how many selected/collected files are remote; warn/confirm before proceeding (CN-ADD-REMOTE-CONFIRM).
+
+§13.3 Dired flow (CN-ADD-DIRED-FLOW)
+- Selection contains directories:
+  - Recursively collect regular files; compute stats {:skipped-too-big, :skipped-nonregular, :remote}.
+  - If remote>0, prompt for confirmation (CN-ADD-REMOTE-CONFIRM).
+  - Show preview buffer (list of files with sizes) and ask user to confirm (CN-ADD-PREVIEW).
+  - On confirm → proceed to merge/apply (see §13.5/§13.7); on cancel → show :aborted info.
+- Selection contains only files:
+  - Add files directly (filters still apply); no preview unless policy changes in future.
+  - Remote-only selection: still ask to confirm (CN-ADD-REMOTE-CONFIRM).
+
+§13.4 Region/File/Buffer flows (CN-ADD-SOURCES)
+- Region → Selection item:
+  - Build a selection item from (buffer-file-name or base buffer), beg/end; name “<basename>:<beg>-<end>” (CN-ADD-SELECTION).
+  - Clear region/mark after adding to avoid stale subsequent operations.
+- File-backed current buffer (no region) → File item:
+  - Add current file; if remote, prompt to confirm first; otherwise add (CN-ADD-CURRENT-FILE).
+- Non-file current buffer → Buffer item:
+  - Add an item referencing the live buffer (CN-ADD-CURRENT-BUFFER).
+
+§13.5 Deduplication and merge (CN-ADD-DEDUP)
+- Stable key is the source of truth (§04.2). Merging rules for file items:
+  - If an item with the same stable key already exists:
+    - Re-enable it (enabled=t) instead of creating a duplicate (preserve other fields).
+    - Schedule the re-enabled item for batched GPTel apply (see §13.7).
+  - Otherwise, create a new enabled file item.
+- Replace old entries that reference the same absolute path (path-based cleanup) to avoid accidental duplicates when legacy entries exist.
+- Order:
+  - Keep old items except those replaced by key or path; append new/re-enabled items at the end (last wins semantics).
+- Return both MERGED items and NEW-OR-ENABLED subset for downstream apply.
+
+§13.6 UI refresh and feedback (CN-ADD-UI-REFRESH)
+- After installing the merged items into the model (§02.2), the View MUST:
+  - Force a quick rerender; invalidate render/modeline caches to avoid key-based skips.
+  - Keep the experience responsive: prefer soft rerender when possible (§19.2).
+- User feedback:
+  - Show “added N” with N = count of new + re-enabled items.
+  - Show diagnostics in preview (when applicable): counts for skipped-too-big, skipped-nonregular, and remote.
+
+§13.7 GPTel apply semantics (CN-ADD-APPLY)
+- Preconditions:
+  - Apply to GPTel only when the push→gptel session flag is ON (§02.7).
+- Scope:
+  - For add flows, enqueue only the “new or re-enabled” items (subset) for background batched apply.
+- Defer/visible window:
+  - Do not require a visible GPTel window for add flows; force background batch (context-navigator-gptel-require-visible-window is ignored for this case).
+- Events and indicators:
+  - After batching starts/finishes, publish :gptel-change lifecycle (:batch-start / :batch-done).
+  - Refresh indicators promptly with a snapshot pull and schedule a soft rerender (§08.5).
+- Full model apply is not required here; keep predictive indicators until events refine.
+
+§13.8 Selection item: details (CN-ADD-SELECTION)
+- Source:
+  - Build from active region or mark boundaries when the region is not active (clamped).
+- Item fields:
+  - type='selection; name “<basename-or-buffer>:<beg>-<end>”; path=buffer-file-name or nil; buffer=live buffer (when available); beg/end integers.
+- GPTel:
+  - When push→gptel is ON, apply only this selection in the current batch (preferred ordering makes selection visible first).
+- Post-conditions:
+  - Clear region and deactivate mark to avoid reusing stale selections.
+
+§13.9 Current file/buffer flows (CN-ADD-CURRENT)
+- Current file:
+  - If remote (TRAMP), ask to confirm before proceeding; otherwise add as an enabled file item.
+- Current buffer:
+  - Add a 'buffer item referencing the live buffer; enabled=t by default.
+
+§13.10 Preview buffer (CN-ADD-PREVIEW)
+- Purpose:
+  - Provide a minimal confirmation UI before adding many files or when directories are included.
+- Content:
+  - Title with totals and aggregate size, optional counters for skipped-too-big, skipped-nonregular, and remote.
+  - List of files with abbreviated paths (size shown for file-only flows).
+- Layout:
+  - Bottom side-window with fit-to-buffer height; view-mode; closes on confirm or cancel.
+
+§13.11 Remote/TRAMP confirmation (CN-ADD-REMOTE-CONFIRM)
+- When remote files are present in the set to be added:
+  - Ask the user to confirm; proceed only on explicit confirmation.
+  - Rationale: remote IO may be slow and unexpected; keep UX responsive and transparent (§19.3, §20.2).
+
+§13.12 Counters and return values (CN-ADD-RESULT)
+- Internal helpers MAY return plists with the following keys for diagnostics and tests:
+  - :files, :skipped-too-big, :skipped-nonregular, :remote
+  - :added (new + re-enabled)
+- Side-effecting entrypoints SHOULD focus on messaging feedback and correctness, not on return values.
+
+References
+- Data model and stable keys: §04
+- Core and state install: §02
+- Events and debouncer: §03
+- View and indicators: §08
+- Add from text/masks (tokens, index, globbing): §13.1
+- Performance (soft rerender, debounce): §19
+- Config (size limits, display): §20
+
+Contracts (IDs)
+- CN-ADD-FS-POLICY
+- CN-ADD-DIRED-FLOW
+- CN-ADD-SOURCES
+- CN-ADD-DEDUP
+- CN-ADD-UI-REFRESH
+- CN-ADD-APPLY
+- CN-ADD-SELECTION
+- CN-ADD-CURRENT-FILE, CN-ADD-CURRENT-BUFFER
+- CN-ADD-PREVIEW
+- CN-ADD-REMOTE-CONFIRM
+- CN-ADD-RESULT

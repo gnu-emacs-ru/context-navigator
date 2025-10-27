@@ -1,0 +1,32 @@
+Title: Context Navigator — 08.8 Modeline Toolbar (cache, remap, text provider)
+Status: Normative
+Version: 1.0
+
+§08.8.1 Purpose and placement
+- Replace mode-line with a compact toolbar-like string in Navigator buffers when enabled (context-navigator-view-modeline-enable) (CN-MDL-APPLY).
+- Do not use per-window overrides; keep per-buffer mode-line-format to avoid leaks when windows get reused (CN-MDL-NO-PER-WINDOW).
+
+§08.8.2 Controls cache
+- Build a cached concatenated string from controls registry (§08.4). Rebuild only on explicit events or when cache key changes (CN-MDL-CACHE).
+- Cache invalidation triggers:
+  - Controls registry changes, keyspec updates (§15), theme change (for icons), flags toggles, MG state changes (CN-MDL-CACHE-INV).
+
+§08.8.3 Face remap
+- Remap mode-line, mode-line-inactive, and mode-line-active faces to a header-line-like background; drop borders (:box) (CN-MDL-FACE-REMAP).
+- Remove remaps when disabling the toolbar to restore defaults (CN-MDL-FACE-REMOVE).
+
+§08.8.4 Status text provider
+- Items view: show full or abbreviated absolute path for item at point; prefer project-relative path when inside root (§01.3/§06) (CN-MDL-ITEM-PATH).
+- Groups view: show “<Display> — <Desc>” using state.el :descriptions with a small TTL cache to avoid disk IO on every redisplay (CN-MDL-GROUP-DESC; §05.3).
+
+References
+- Controls: §08.4
+- Items/groups providers: §08.2/§08.3
+- Persist/state: §05
+- Keys/i18n: §15/§16
+
+Contracts (IDs)
+- CN-MDL-APPLY, CN-MDL-NO-PER-WINDOW
+- CN-MDL-CACHE, CN-MDL-CACHE-INV
+- CN-MDL-FACE-REMAP, CN-MDL-FACE-REMOVE
+- CN-MDL-ITEM-PATH, CN-MDL-GROUP-DESC

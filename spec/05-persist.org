@@ -1,0 +1,110 @@
+Title: Context Navigator — 05 Persistence (v3 format, state.el, async load)
+Status: Normative
+Version: 1.0
+
+§05.1 Filesystem layout (Source of truth for on-disk paths)
+- Context directory name: see defcustom context-navigator-dir-name (default: ".context").
+- Group file per project root:
+  - <root>/<context-dir>/<slug>.el
+  - Global mode (no project): <global-dir>/<slug>.el, where global-dir = context-navigator-global-dir (default: ~/.context).
+- State file:
+  - <root>/<context-dir>/state.el (project)
+  - <global-dir>/state.el (global)
+- Persist format version: context-navigator-persist-version = 3 (v3).
+
+§05.2 Group file format (v3)
+- Data format: Emacs Lisp form (plist) that is loadable without executing code.
+- Top-level keys (Normative):
+  - :version     → integer, MUST be 3 (CN-PERSIST-VERSION)
+  - :generator   → string, optional, informational
+  - :root        → string absolute path of project root or "~" for global
+  - :slug        → string group slug (file name without extension)
+  - :items       → vector|list of item plists (see below)
+- Item plist format (serializable subset of §04.1):
+  - :type    → 'file | 'buffer | 'selection (symbol, serialized as symbol or keyword)
+  - :name    → string
+  - :path    → string or nil (absolute path; relative display is derived at render time, see §08.1)
+  - :beg     → integer or nil (selection only)
+  - :end     → integer or nil (selection only)
+  - :size    → integer or nil (optional hint)
+  - :enabled → boolean
+  - :meta    → plist or nil (MUST be serializable; buffer objects are not persisted)
+- Not persisted: live buffers, transient fields; they MUST be reconstructed at runtime as needed.
+- Invariants:
+  - CN-PERSIST-V3-FMT: Files MUST not contain executable code; only data structures.
+  - CN-PERSIST-ABS: :path SHOULD be absolute (expand-file-name); UI derives relative variants.
+
+§05.3 state.el format (per-root session)
+- File: <root>/<context-dir>/state.el (or global dir)
+- Top-level plist keys:
+  - :version        → integer (>= 1)
+  - :current        → string group slug (active group; default "default")
+  - :groups         → alist (display-name . slug) or nil (optional hint cache)
+  - :descriptions   → alist (slug . description-string) for modeline and help
+  - :multi          → boolean (MG mode flag for this root)
+  - :selected       → list of slugs (MG selection; empty list means “no selection”)
+  - :last-items-pos → plist { :key string-or-".." :winstart integer } — last cursor anchor in items view for sticky restore
+- Invariants:
+  - CN-STATEEL-CUR-DEF: When :current is missing, loader MUST write "default" and proceed.
+  - CN-STATEEL-SAFE: Read/write MUST be robust to missing keys and tolerate old versions.
+
+§05.4 Async loading lifecycle (groups)
+- Entry (Core) calls persist loader with (ROOT SLUG CALLBACK).
+- Loader responsibilities:
+  - Publish events: see §03 (topic, payload)
+    - :context-load-start (ROOT)
+    - :context-load-step (ROOT POS TOTAL) — optional, for progress (debounced in view)
+    - On completion (success/failure): callback(ITEMS|nil) and then Core publishes :context-load-done (ROOT OK)
+  - Respect CN-LOAD-TOKEN (Core, §02.6): loader MUST NOT install items itself; it returns data only.
+- Reading behavior:
+  - v3 reader MUST validate :version and item shapes; unknown fields are ignored.
+  - On any read error, return nil to signal failure; Core will keep previous items (§02.6).
+- MG pre-aggregation (informative): When Core aggregates multiple groups (§02.8, §09), persist loader MAY be called in parallel; do not serialize unnecessarily.
+
+§05.5 Saving policy and suppression
+- Autosave is triggered by Core (§02.3) only when:
+  - Non-empty diff (items actually changed)
+  - Active group slug is non-empty
+  - Autosave is not inhibited (loading/restart windows)
+- Suppression flag (CN-PERSIST-SUPPRESS-EMPTY):
+  - context-navigator-persist-suppress-empty-save = t suppresses empty saves (set by Core during load/restart windows).
+  - Loader MUST NOT clear this flag; Core clears it on finalization (§02.6, §02.10).
+
+§05.6 Migrations (v2 → v3)
+- When reading a group file with :version < 3:
+  - Convert items to v3 serializable shape (drop buffers, preserve :path, :name, :beg/:end, :enabled, :meta when serializable).
+  - Write back v3 file atomically to the same path (optional best-effort).
+  - CN-MIGRATE-IDEMP: Migration SHOULD be idempotent.
+- state.el migration:
+  - Ensure :version >= 1 and :current exists; write defaults as needed.
+
+§05.7 Quick metrics (without full deserialization)
+- CN-PERSIST-ENABLED-COUNT:
+  - A helper MAY compute (:enabled . :total) counters from the group file quickly.
+  - Core uses this in MG auto-push gate (§02.9) to avoid heavy IO.
+  - Implementations MAY use a fast parse or summary block; correctness prevails over micro-optimization.
+
+§05.8 Default group creation
+- CN-PERSIST-DEFAULT:
+  - When the requested :current group file is missing, persist MUST allow Core to select "default".
+  - If context-navigator-create-default-group-file is non-nil and slug="default", an empty v3 file MUST be created on first use.
+
+§05.9 Error handling and TRAMP
+- TRAMP/remote roots:
+  - Avoid blocking UI; perform reads/writes asynchronously when possible.
+  - Treat unreadable/missing files as empty context; Core keeps previous items and shows preloader (§08).
+- All IO errors MUST be caught and logged via the logger (§18), returning nil from loaders/writers.
+
+References
+- Events: §03
+- Core lifecycle/tokens: §02.6
+- MG semantics: §09
+- Model: §04
+- Logger/UI: §18
+
+Contracts (IDs)
+- CN-PERSIST-VERSION, CN-PERSIST-V3-FMT, CN-PERSIST-ABS
+- CN-STATEEL-CUR-DEF, CN-STATEEL-SAFE
+- CN-PERSIST-SUPPRESS-EMPTY
+- CN-PERSIST-ENABLED-COUNT
+- CN-PERSIST-DEFAULT

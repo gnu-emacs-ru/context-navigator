@@ -1,0 +1,77 @@
+Title: Context Navigator — 07 GPTel Bridge (apply, pull, indicators)
+Status: Normative
+Version: 1.0
+
+§07.1 Availability and loading
+- CN-GPTEL-AVAIL: The bridge MUST operate safely when GPTel is absent.
+  - Provide predicates (e.g., gptel-available-p) that check fboundp/featurep; do not force-load GPTel at init.
+  - All calls MUST be guarded; failures MUST be caught and logged (§18).
+
+§07.2 Item conversion (pull)
+- Pull returns List<context-navigator-item> based on GPTel’s context:
+  - Prefer stable conversion for files and regions; buffer entries map to buffer/region where possible.
+  - Fallback: when normal conversion yields empty but raw GPTel context is non-empty, parse raw entries (best-effort).
+  - Deduplicate by stable key (§04.2) with last-wins semantics (§04.3).
+- CN-GPTEL-PULL-FALLBACK: When primary converter fails, use raw collector (including last-resort gptel internals if present) to keep indicators correct.
+
+§07.3 Apply semantics (diff vs reset)
+- Inputs: DESIRED-ITEMS (model items; enabled flag governs inclusion)
+- Compute diff by stable key (§04.3):
+  - :add, :remove, :update
+- CN-GPTEL-RESET-WHEN:
+  - Reset MUST be used when precise remove/update is not reliable or unsupported:
+    - Selections take part in :remove or :update
+    - Buffers take part in :remove or :update (cannot reliably remove by buffer)
+    - GPTel lacks remove/remove-all primitives for fine-grained ops
+- Reset algorithm:
+  - Remove-all (best-effort, silencing messages) + add enabled items
+  - Publish :gptel-change :reset COUNT (see §03)
+- Diff algorithm:
+  - Remove → Update → Add (enabled only), counting operations
+  - Publish :gptel-change :diff OPS
+
+§07.4 Lifecyle events (bridge level)
+- After successful operations:
+  - :gptel-change :add COUNT (single add-one)
+  - :gptel-change :remove COUNT (single remove-one)
+  - :gptel-change :reset COUNT
+  - :gptel-change :diff OPS
+  - :gptel-change :on-load (when GPTel loads; indicators may be stale)
+- Noisy variable-watchers SHOULD NOT be used; prefer mutation advices only (CN-GPTEL-NO-WATCHERS).
+
+§07.5 Membership checks (indicators)
+- CN-GPTEL-PRESENT:
+  - present-p(item) returns non-nil when item’s key is currently in GPTel context.
+  - For selections, value-equality check by (type path beg end) MUST be used in addition to key match.
+  - Fallback to raw context parsing when primary pull misses entries.
+
+§07.6 Batching and deferral (Core/Bridge interaction)
+- Core performs batching and visible-window deferral (§02.8):
+  - :gptel-change :batch-start TOTAL
+  - :gptel-change :batch-done TOTAL
+  - :gptel-change :batch-cancel
+- Bridge MUST be side-effect free regarding timers; it only performs add/remove/reset on demand.
+- CN-GPTEL-DEFER: When visible-window requirement is ON, Core defers starting a batch until a GPTel window is visible, polling at configurable intervals.
+
+§07.7 Clear-all and manual toggles
+- Clear-all:
+  - Best-effort remove-all; publish :gptel-change :reset 0 (or :cleared auxiliary event).
+- Toggle-one:
+  - Explicit user action toggles membership of a single item regardless of auto-push flag.
+  - Return :added, :removed or :noop.
+
+§07.8 Error handling
+- All bridge calls MUST handle missing GPTel functions gracefully and be exception-safe.
+- Logging under :gptel topic SHOULD be concise and include operation summary.
+
+References
+- Model/keys: §04
+- Events: §03
+- Core batching/deferral: §02.8
+- View indicators: §08.5
+
+Contracts (IDs)
+- CN-GPTEL-AVAIL, CN-GPTEL-PULL-FALLBACK
+- CN-GPTEL-RESET-WHEN, CN-GPTEL-NO-WATCHERS
+- CN-GPTEL-PRESENT
+- CN-GPTEL-DEFER

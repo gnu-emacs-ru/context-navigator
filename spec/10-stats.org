@@ -1,0 +1,41 @@
+Title: Context Navigator — 10 Stats Split (light summary, TTL)
+Status: Normative
+Version: 1.0
+
+§10.1 Purpose and layout
+- Five-line split below the Navigator showing quick stats:
+  - Totals, enabled, by type (files/buffers/selections), and optional token/size estimates (CN-STATS-RENDER).
+- Tabs:
+  - Summary vs Types view; default is Summary (CN-STATS-TABS).
+
+§10.2 Caching and TTL
+- Compute stats with a small TTL cache to avoid frequent recomputation (CN-STATS-TTL).
+- Invalidate on:
+  - :model-refreshed, :project-switch, :group-switch-done, MG selection changes, and explicit refresh requests (CN-STATS-INV-KEYS).
+
+§10.3 TRAMP/remote policy
+- Remote roots:
+  - Use 'lazy' policy by default: avoid heavy IO; show stubs or skip token/size estimates (CN-STATS-REMOTE-LAZY).
+  - Policies: lazy | strict | off, configurable (§20) (CN-STATS-REMOTE-POLICY).
+
+§10.4 Window behavior
+- Height:
+  - Auto-fit to at most half of the Navigator window height; respect manual user resize (CN-STATS-AUTOFIT).
+- Visibility:
+  - Toggled independently; closing Navigator SHOULD close the split as well (CN-STATS-LIFECYCLE).
+
+§10.5 MG aggregation
+- When MG selection is non-empty, aggregate stats across selected groups (async), reuse cache entries where possible (CN-STATS-MG-AGG).
+
+References
+- Events: §03
+- MG semantics: §09
+- Performance: §19
+- Config: §20
+
+Contracts (IDs)
+- CN-STATS-RENDER, CN-STATS-TABS
+- CN-STATS-TTL, CN-STATS-INV-KEYS
+- CN-STATS-REMOTE-LAZY, CN-STATS-REMOTE-POLICY
+- CN-STATS-AUTOFIT, CN-STATS-LIFECYCLE
+- CN-STATS-MG-AGG

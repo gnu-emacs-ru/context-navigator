@@ -1,0 +1,58 @@
+Title: Context Navigator — 08.3 Groups View (list rendering, actions, MG lamps)
+Status: Normative
+Version: 1.0
+
+§08.3.1 Rendering the groups list (Source of truth)
+- Purpose: render a scrollable list of groups for the current root with a concise per-row summary.
+- Inputs:
+  - Root: state.last-project-root (§02.1)
+  - Groups: candidates from persist/cache (slug → display), see §09.2
+  - Active group slug: state.current-group-slug (§02.1)
+  - MG state and selection: §09.4
+- Row composition (pure string with properties):
+  - [checkbox/lamp] display-name   … right-aligned slug
+  - Properties:
+    - 'context-navigator-group-slug = slug (string, non-empty)
+    - 'context-navigator-group-display = display-name (string)
+    - 'context-navigator-interactive = t on the actionable segment
+  - Active-group highlight:
+    - The active group row MUST be highlighted when context-navigator-highlight-active-group = t (CN-VIEW-GROUPS-ACTIVE-HL).
+- Sorting:
+  - Natural by display-name (case-insensitive); slug is used for tie-breaks (CN-VIEW-GROUPS-SORT).
+
+§08.3.2 Selection lamps for MG
+- In MG (multi-group) mode (§09.4), each group row shows selection status:
+  - Selected → solid lamp, Unselected → hollow lamp (or text fallback)
+  - Per-item indicators in items view are OFF in MG (§08.1.1, CN-VIEW-IND-MG-OFF).
+- The lamp is clickable and toggles selection for the row’s slug via groups dispatch (CN-VIEW-GROUPS-MG-LAMP).
+- Accessibility: when icons are unavailable, use [x]/[ ] text markers.
+
+§08.3.3 Interactions
+- Mouse:
+  - mouse-1 on a group row opens that group (switch active) (CN-VIEW-GROUPS-OPEN).
+  - mouse-1 on the lamp toggles selection (MG only).
+- Keyboard (bindings come from keyspec §15):
+  - RET on a group row → open group (switch active).
+  - Dedicated commands exist for create/rename/duplicate/delete/edit-description (invoked via dispatchers).
+- Cursor restore:
+  - View SHOULD keep cursor near previously active group to minimize jump (buffer-local cache), CN-VIEW-GROUPS-CURSOR-RESTORE.
+
+§08.3.4 Fallbacks and UX
+- When groups list is empty:
+  - Show informational hint to create a group; “default” group SHOULD be used as fallback by Core/Persist (§05.8).
+- When group load fails and context-navigator-auto-open-groups-on-error = t, switch the sidebar to the groups list (CN-VIEW-GROUPS-AUTO-OPEN-ON-ERROR).
+
+References
+- Model/state: §02
+- Groups semantics and CRUD: §09
+- Rendering helpers: §08.1
+- Navigation: §08.6
+- Events wiring: §08.7
+
+Contracts (IDs)
+- CN-VIEW-GROUPS-ACTIVE-HL
+- CN-VIEW-GROUPS-SORT
+- CN-VIEW-GROUPS-MG-LAMP
+- CN-VIEW-GROUPS-OPEN
+- CN-VIEW-GROUPS-CURSOR-RESTORE
+- CN-VIEW-GROUPS-AUTO-OPEN-ON-ERROR

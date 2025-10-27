@@ -1,0 +1,70 @@
+Title: Context Navigator — 14 Razor (LLM-assisted minimization, safe-by-default)
+Status: Normative
+Version: 1.0
+
+§14.1 Purpose
+- Minimize the active context to the essential subset using an LLM (Occam/Razor).
+- Operate safely:
+  - Predictable prompts, bounded payload, conservative apply with undo/redo.
+  - Handle remote/TRAMP and large payload warnings.
+
+§14.2 Configuration (CN-RAZOR-CONFIG)
+- Model/provider selection, temperature, max-tokens, timeout.
+- Parse modes:
+  - json-only: expect strict JSON list of tokens/keys.
+  - flex: accept broader output; parse tokens and map to keys by heuristics.
+- Warnings/policies:
+  - Size thresholds (bytes/tokens).
+  - TRAMP: avoid reading remote files for payload by default; warn/confirm.
+- Apply behavior:
+  - Auto-push after apply: toggled by defcustom; defaults follow session flag.
+
+§14.3 Payload construction (CN-RAZOR-PAYLOAD)
+- Collect enabled items with content:
+  - Files: head or entire contents per config.
+  - Selections: region substrings (clamped).
+  - Buffers: only when visiting file; otherwise omit to avoid large payload surprises.
+- Gather org buffer/region as the “question”; include concise system hints.
+- Compute byte and token estimates; compare with thresholds and warn as needed.
+
+§14.4 Response parsing (CN-RAZOR-PARSE)
+- json-only:
+  - Strict parsing; reject on JSON errors; offer retry with debug log.
+- flex:
+  - Extract likely tokens; normalize and map to item keys via multiple strategies:
+    - stable keys when present; abs/rel paths; buffer-name; selection signatures (file:beg-end).
+  - Ambiguities:
+    - keep candidates or ask user; when unsure, behave conservatively (do not over-delete).
+- Diagnostics:
+  - Log parsing stats; expose counters for tests.
+
+§14.5 Apply semantics (CN-RAZOR-APPLY)
+- Keep-only:
+  - Build a filtered model of items to keep; other items become disabled.
+- History:
+  - Push snapshot before apply; allow undo/redo via core history (§02.5).
+- Auto-push:
+  - When enabled, push resulting model to GPTel (diff/reset per §07).
+- UX:
+  - Spinner/status integrated with toolbar; clear messages on success/failure.
+
+§14.6 Edge cases and safety
+- Empty/inconclusive result:
+  - Request confirmation to apply empty selection; default to abort (fail-safe).
+- Remote/TRAMP:
+  - Prefer not to fetch remote content; warn when doing so.
+- MG:
+  - Operate on current group only; for MG use Multifile and manual push across selection (§12, §09).
+
+References
+- Model: §04
+- Core history: §02.5
+- GPTel: §07
+- Performance/TRAMP: §19
+- UI/i18n/logs: §16, §18
+
+Contracts (IDs)
+- CN-RAZOR-CONFIG
+- CN-RAZOR-PAYLOAD
+- CN-RAZOR-PARSE
+- CN-RAZOR-APPLY

@@ -1,0 +1,46 @@
+Title: Context Navigator — 90 Testing and Traceability
+Status: Normative
+Version: 1.0
+
+§90.1 Principles (CN-TEST-PRINCIPLES)
+- Spec → Tests → Code: every contract (CN-*) maps to tests and implementation symbols.
+- EN locale enforced in noninteractive runs to stabilize outputs (§16).
+- Avoid remote/TRAMP heavy paths in smoke tests; focus on correctness and responsiveness.
+
+§90.2 Traceability matrix (CN-TEST-MATRIX)
+- For each spec section and CN-ID provide:
+  - test file(s) and test name(s) (e.g., context-navigator-…-test.el)
+  - code symbols (functions/variables) under test (module anchors)
+- Example anchors:
+  - §08.1 render key, alignment → test/context-navigator-render-*-test.el
+  - §08.5 indicators/polling → test/context-navigator-view-indicators-test.el
+  - §07 GPTel apply/reset/batch → test/context-navigator-gptel-*-test.el
+  - §09 MG selection/gates → test/context-navigator-view-push-now-mg-test.el, -stats-aggregate-mg-test.el
+  - §13 add flows/masks → test/context-navigator-mask-*-test.el, -minibuf-mixed-input-test.el, -path-add-test.el
+  - §12 multifile editing → test/context-navigator-multifile-*-test.el
+  - §15 keys/transient/which-key → test/context-navigator-transient-*-test.el, -which-key integration
+  - §05 persist loader/saver → test/context-navigator-persist-test.el
+  - §02 core API/state → test/context-navigator-core-*-test.el
+
+§90.3 Test environment (CN-TEST-ENV)
+- Noninteractive EN locale; disable icons on TTY/TRAMP by default.
+- Event bus reset helpers available; timers/debounces use short delays in tests.
+- Avoid variable watchers that create feedback loops (GPTel); rely on function advices only (§07.4).
+
+§90.4 Coverage guidelines (CN-TEST-COVER)
+- Positive and negative paths:
+  - json-only vs flex in Razor; ambiguous/unresolved in add-from-text; mask single/mixed inputs.
+  - MG push-now with empty and non-empty selection; gate thresholds.
+  - Spinner degrade on slippage; soft vs full renders; relpath cache invalidation.
+- Edge cases:
+  - Missing group/state files; unreadable files; TRAMP behaviors.
+  - Undo/redo integration after Razor apply; cursor/scroll sticky restore.
+
+References
+- All sections §00–§21 as per mappings above.
+
+Contracts (IDs)
+- CN-TEST-PRINCIPLES
+- CN-TEST-MATRIX
+- CN-TEST-ENV
+- CN-TEST-COVER

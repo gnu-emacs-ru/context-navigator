@@ -1,0 +1,45 @@
+Title: Context Navigator — 08.4 View Controls (registry, gating, caching)
+Status: Normative
+Version: 1.0
+
+§08.4.1 Controls registry (Source of truth)
+- The View maintains a registry of controls (toggles/actions) rendered in modeline/header segments:
+  - Each control provides functions or closures:
+    - visible-p, enabled-p, label, icon (optional, §17), face, spinner-p, help-echo, invoke
+  - Style: context-navigator-view-controls-style = auto | icons | text (fallback to text on TTY or when icons unavailable).
+  - Controls are concatenated into a single cached string for the modeline (CN-CTRL-CACHE-MODELINE).
+- Idempotent cache:
+  - Cache key MUST include session flags, MG state, and any inputs that change labels/icons (CN-CTRL-CACHE-KEY).
+
+§08.4.2 Gating and availability
+- Push/Auto-project toggles:
+  - Reflect session flags from Core: push→gptel (§02.7/§02.8) and auto-project (§02.7).
+  - Toggling updates flags and triggers a lightweight refresh (CN-CTRL-FLAGS-REFRESH).
+- MG gate (auto-push):
+  - When MG selection exceeds threshold (§02.9), auto-push is disabled; controls MUST surface the OFF state and provide a once-per-session notification (CN-CTRL-MG-GATE).
+- Empty selection in MG:
+  - Push-now MUST be available; Push-auto state shows OFF; tooltips explain why (CN-CTRL-MG-EMPTY-SELECTION-UX).
+
+§08.4.3 Icons and fallbacks
+- Icons:
+  - Provided by §17; if unavailable or on TRAMP/TTY per policy, controls render text-only labels (CN-CTRL-ICONS-FALLBACK).
+- Uniform height and baseline alignment:
+  - Icons should use raised display to match text baseline (implementation detail in §17).
+
+§08.4.4 Safety and events
+- Invoke handlers MUST be exception-safe and log succinctly on errors (§18).
+- Changes that affect the model or flags SHOULD trigger a soft sidebar rerender without dropping caches (CN-CTRL-SOFT-REFRESH).
+
+References
+- Core flags and push semantics: §02
+- MG semantics: §09
+- Icons: §17
+- Modeline integration: §08.8
+- Events: §03
+
+Contracts (IDs)
+- CN-CTRL-CACHE-MODELINE, CN-CTRL-CACHE-KEY
+- CN-CTRL-FLAGS-REFRESH
+- CN-CTRL-MG-GATE, CN-CTRL-MG-EMPTY-SELECTION-UX
+- CN-CTRL-ICONS-FALLBACK
+- CN-CTRL-SOFT-REFRESH

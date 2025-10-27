@@ -1,0 +1,91 @@
+Title: Context Navigator — 13.1 Add from Text/Minibuffer (tokens, masks, resolution)
+Status: Normative
+Version: 1.0
+
+§13.1 Purpose
+- Extract path-like tokens from arbitrary text or minibuffer input and add resolved files to the model.
+- Support a single glob mask (with **), or a list of explicit names; mixed input → explicit names win.
+
+§13.2 Token extraction (CN-TEXT-TOKENS)
+- Extract candidates using regex over:
+  - quoted strings "…" / '…' / <…>, and path-like runs [~[:alnum:]_.:/\\-]+
+- Normalize token (CN-TEXT-NORM):
+  - trim whitespace
+  - strip surrounding quotes/brackets/parens (balanced)
+  - strip trailing position suffixes :N or :A-B (protect Windows drives like C:)
+  - strip trailing annotation blocks in parentheses and dangling openers
+  - collapse repeated backslashes, preserving UNC prefix (\\server\…)
+  - drop trailing punctuation (,.;:)]}"»), except when leaving a drive root
+- Reject URLs (scheme://) (CN-TEXT-REJECT-URL).
+- Token acceptance (CN-TEXT-ACCEPT):
+  - accept absolute paths (POSIX/Windows/UNC),
+  - accept tokens with directory separators (no double // or \\),
+  - accept bare basenames only when they have an extension.
+
+§13.3 Project file index and TTL cache (CN-TEXT-INDEX)
+- Index source priority:
+  - project.el (project-files) → git ls-files → fallback recursive scan with exclusions
+- TTL cache keyed by root; reset on :project-switch and :group-switch-start.
+- TRAMP: disable deep scans by default; return empty index for remote roots.
+
+§13.4 Resolution algorithm (names → files) (CN-TEXT-RESOLVE)
+- For each token:
+  - If absolute path → accept if regular file.
+  - If relative path exists under root → accept if regular file.
+  - Otherwise query index:
+    - if token has extension or has dirs → match by basename
+    - if token is bare without extension → match by basename sans extension
+  - Unique match → accept; multiple matches → ambiguous; zero → unresolved.
+- Results: plist {:files L :ambiguous (tok . [hits]) :unresolved L}.
+
+§13.5 Filters and limits (CN-TEXT-FILTERS)
+- Apply file filters: skip non-regular, symlink, and > context-navigator-max-file-size.
+- Remote warning: when files include TRAMP paths, ask confirmation.
+- Limit:
+  - Abort text/minibuffer add when (length files) > context-navigator-path-add-limit unless user confirms in preview.
+
+§13.6 Minibuffer input policy (CN-TEXT-MINIBUF)
+- Parse raw input into parts separated by whitespace; normalize each part:
+  - If any explicit name tokens exist → ignore any masks; resolve names only.
+  - If more than one mask → warn and abort (single mask supported).
+  - If exactly one mask → run mask flow (§13.7).
+  - If raw contains mask chars but tokenization produced none → treat raw as a single mask.
+- Mixed inputs:
+  - Report “mask mixed with names” info and proceed with names only.
+
+§13.7 Masks/globs (CN-TEXT-GLOB)
+- Base:
+  - project (default), cwd (when input starts with ./ or ../), abs (when input is absolute or ~)
+- Glob translation:
+  - * → [^/]*, ? → [^/], [] character classes including [:alnum:], [!…] negation
+  - ** (globstar) → 0+ segments ([^/]+/)* (configurable; §20)
+- Candidate enumeration:
+  - Prefer project index under the static prefix; fallback to recursive scan from scan-root
+  - Dotfiles:
+    - Excluded unless pattern explicitly includes dot-components or global override is ON.
+- Apply filters/limits and preview (with confirmation) on large sets or remote.
+
+§13.8 Apply to model and GPTel (CN-TEXT-APPLY)
+- Merge files into the model:
+  - Re-enable existing file items; avoid duplicates (stable key; §04.2).
+- UI refresh: force quick rerender; keep caches when possible (§08).
+- GPTel:
+  - For adds, enqueue only new/re-enabled items for background batch apply (ignore visible-window requirement).
+  - Publish :gptel-change :batch-done after full apply paths to refresh indicators.
+
+References
+- Model/keys: §04
+- Project/root: §06
+- Events/debounce: §03
+- Performance/TRAMP: §19
+- Config: §20
+- View/Indicators: §08
+
+Contracts (IDs)
+- CN-TEXT-TOKENS, CN-TEXT-NORM, CN-TEXT-REJECT-URL, CN-TEXT-ACCEPT
+- CN-TEXT-INDEX
+- CN-TEXT-RESOLVE
+- CN-TEXT-FILTERS
+- CN-TEXT-MINIBUF
+- CN-TEXT-GLOB
+- CN-TEXT-APPLY

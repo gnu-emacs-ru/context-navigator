@@ -1,0 +1,51 @@
+Title: Context Navigator — 00 Conventions and Meta
+Status: Normative
+Version: 1.0
+
+§00.1 Purpose and change policy
+- This specification is the single source of truth for Context Navigator (CN).
+- Process for changes: update spec → update tests → update code.
+- Every concept/contract must be defined exactly once; all other places refer to the canonical definition by § number.
+
+§00.2 Scope, structure, and references
+- Files under spec/ are numbered (NN-name.org). Sections are referenced as §NN.MM.
+- Each spec file starts with Title, Status (Normative/Informative), and Version (independent of the package version).
+- No repetition: if a term or contract is already defined elsewhere, write “See §XX.YY”.
+
+§00.3 Normative vs Informative content
+- Normative: mandatory contracts, invariants, API signatures, payload schemas, algorithmic steps, configuration semantics.
+- Informative: rationale, examples, diagrams, implementation notes.
+
+§00.4 Traceability and IDs
+- Each invariant/contract is assigned a unique ID CN-XXX (e.g., CN-STATE-IMMUT).
+- §90 Testing maintains a traceability matrix Spec → Tests → Code (function or module symbol).
+- Tests use EN locale (stable messages) unless otherwise specified.
+
+§00.5 Versioning and compatibility
+- Spec version follows semver for the spec itself; it is decoupled from the Emacs package version (see context-navigator-version).
+- Backwards compatibility rules:
+  - Minor spec updates may clarify text without changing normative behavior.
+  - Major spec updates can change contracts/invariants and must include migration notes where applicable (e.g., persist format).
+
+§00.6 Canonical sources (“define-once → reference”)
+- Terms and glossary: §01.3.
+- Data model (items, stable keys, diff semantics): §04.
+- Event topics and payload shapes: §03.
+- Core state and session flags (auto-project, push→gptel), autosave, batch logic: §02.
+- GPTel bridge contract: §07.
+- Multi-group semantics: §09.
+- TRAMP/remote policies and general performance/caches: §19–§20.
+- UI textual keys/i18n: §16.
+
+§00.7 Dialectical nodes (contradictions → resolutions)
+- UI responsiveness vs async loading → lightweight preloader with spinner; debounced renders (§08, §03.3).
+- Predictive indicators vs actual gptel state → predictive snapshot from enabled items refined by :gptel-change events; optional polling (§08.5, §07).
+- Multi-group mass operations vs per-item toggles → forbid per-item toggles in MG, use aggregated actions and selection semantics (§09).
+- Auto-push vs large selections → threshold gate disables auto-push; manual push remains available (§02.9, §09.6).
+- TRAMP correctness vs speed → lazy/strict/off policies for previews/stats; minimize remote IO (§10.3, §19.3, §20).
+- Render flicker vs accuracy → render-key; soft refresh vs full re-render; cache relpaths and sorted items per gen/root (§08.1, §19.2).
+
+§00.8 Document conventions
+- Keywords like MUST/SHOULD/MAY follow RFC 2119.
+- Payload shapes are shown as (topic arg1 arg2 …) or plists where applicable.
+- Cross-references use §NN.MM and “See §NN.MM”.

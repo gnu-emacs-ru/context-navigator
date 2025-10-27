@@ -1,0 +1,54 @@
+Title: Context Navigator — 08 View Overview (Sidebar/Buffer, Preloader, Indicators)
+Status: Informative (overview), Normative (interfaces)
+Version: 1.0
+
+§08.1 Display modes and windows
+- Modes:
+  - Sidebar (side-window on the left, fixed width)
+  - Buffer mode (magit-like buffer; split policies)
+- Window parameters:
+  - Sidebar windows MUST be marked with (window-parameter 'context-navigator-view 'sidebar)
+  - Buffer mode windows MUST be marked 'buffer
+- Opening:
+  - View MUST not depend on prior mode enable; it can enable mode lazily for stable init (§02).
+  - Header-line is used as the title area (no in-buffer title).
+
+§08.2 Render flow (high-level)
+- Events:
+  - Subscribe to :model-refreshed, :context-load-(start|step|done), :project-switch, :group-switch-(start|done), and :gptel-change (indicators).
+- Render-key (CN-RENDER-KEY; §08.6 in detail):
+  - Composite fingerprint to skip full renders when nothing relevant changed.
+- Preloader:
+  - During loading-p or when :context-load-step is observed, render a lightweight centered spinner line (no icons, no sorting).
+  - Spinner degrades to a static indicator when timer slippage exceeds threshold.
+
+§08.3 Header-line and modeline
+- Header-line:
+  - Shows “[project[: group]]” and live filter segment (with clickable [×]); clicking/tapping the title toggles collapse.
+- Modeline toolbar:
+  - Minimal, header-line-like background (no border), cached controls string; applied via local face remaps only in Navigator buffers (§08.8).
+
+§08.4 Indicators (predictive + actual)
+- Predictive:
+  - From the model’s enabled items (present-only approximation) as soon as :model-refreshed fires.
+- Actual:
+  - Refined by :gptel-change events and optional polling.
+- MG influence:
+  - In MG, per-item indicators are hidden; group-level selection lamps are used instead (§08.3, §09).
+
+§08.5 Caches and soft rendering
+- Relpaths cache per generation/root; sorted-items cache per generation/root; controls/menu cache; icons cache; indicators keys cache.
+- Soft rerender:
+  - Debounced refresh without invalidating caches to minimize flicker; reserved for frequent events.
+
+§08.6 Keyboard/mouse
+- Items/groups and interactive segments (toggles, actions) MUST have keyboard access via TAB/Shift-TAB and mouse-1 on segments.
+- Minimal keymap in the major mode; full bindings are applied via keyspec (§15).
+
+References
+- Events: §03
+- Rendering specifics: §08.1–§08.3
+- Modeline: §08.8
+- Indicators: §08.5
+- Groups/MG: §09
+- Keys: §15

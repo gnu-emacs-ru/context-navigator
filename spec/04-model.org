@@ -1,0 +1,57 @@
+Title: Context Navigator — 04 Data Model (Items, Keys, Diff)
+Status: Normative
+Version: 1.0
+
+§04.1 Item structure (context-navigator-item)
+- Fields:
+  - type: symbol — 'file | 'buffer | 'selection
+  - name: string — human-readable name (basename for files, buffer name, or synthetic selection label)
+  - path: string or nil — absolute or project-relative path (when applicable)
+  - buffer: buffer or nil — live buffer handle (buffer items and some selections)
+  - beg/end: integers or nil — region bounds for 'selection (inclusive; clamped when editing)
+  - size: integer or nil — optional size hint (not required)
+  - enabled: boolean — participation in GPTel apply (bridge interprets semantics; see §07)
+  - meta: plist or nil — optional metadata (implementation-defined)
+- Equality:
+  - Structural comparisons SHOULD use field-wise equality except meta (shallow). Stable identity is the key (see §04.2).
+
+§04.2 Stable key grammar (Source of truth)
+- Purpose: key uniquely identifies an item within CN; used for indexing, dedup, and GPTel mapping.
+- Grammar:
+  - file: "file:" <ABS>
+    - ABS is an absolute, normalized file path.
+  - buffer: "buf:" <BUFFER-NAME> [ ":" <ABS> ]
+    - BUFFER-NAME is the buffer’s name; ABS is the file path if visiting a file; omitted for non-file buffers.
+  - selection: "sel:" <ABS> ":" <BEG> "-" <END>
+    - ABS is absolute file path; BEG/END are integers (region bounds).
+- Requirements:
+  - Keys MUST be stable across sessions when path/bounds are stable.
+  - Keys MUST be unique per item identity; two items that differ only by enabled flag share the same key.
+
+§04.3 Index and uniqueness
+- Index (key → item) reflects the last occurrence in items (last-wins semantics).
+- Uniqueness helper:
+  - model-uniq(items): returns items with duplicates removed by key; last occurrence kept.
+- Diff by key (CN-DIFF-BY-KEY):
+  - model-diff(old new) returns plist {:add L :remove L :update L}
+    - :add: keys in new but not in old
+    - :remove: keys in old but not in new
+    - :update: keys present in both but differing by fields (excluding key identity)
+
+§04.4 Enabled flag semantics
+- enabled = t means the item SHOULD be present in GPTel when the current context is in effect (subject to MG aggregation and gates; see §02.8, §09).
+- Selection/buffer items MAY force a reset apply when diffs cannot precisely remove/update entries (see §07).
+
+§04.5 Path normalization
+- Absolute paths SHOULD be expanded via expand-file-name.
+- Relative display in UI is computed against current root (view caches relpaths per generation/root; see §08.1).
+
+References
+- Terms: §01.3
+- Core: §02
+- Events: §03
+- GPTel bridge: §07
+- Groups/MG: §09
+
+Contracts (IDs)
+- CN-DIFF-BY-KEY (see also functional helpers in context-navigator-fp.el)

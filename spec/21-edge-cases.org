@@ -1,0 +1,43 @@
+Title: Context Navigator — 21 Edge Cases and Resilience
+Status: Normative
+Version: 1.0
+
+§21.1 Missing files and defaults (CN-EDGE-DEFAULTS)
+- Missing group file:
+  - Fallback to "default"; optionally create empty v3 group on first use (§05.8).
+- Missing :current in state.el:
+  - Write "default" and proceed (§05.3).
+
+§21.2 Load/token races (CN-EDGE-TOKENS)
+- All async callbacks MUST check load-token before installing items (§02.6).
+- Batch apply to GPTel bound to the same load-token to avoid mixing contexts.
+
+§21.3 MG semantics and safeguards (CN-EDGE-MG)
+- Item toggles are forbidden in MG modes (§09.4); UI MUST suppress toggles and per-item indicators (items view).
+- MG empty selection:
+  - Clear GPTel and avoid push attempts; controls show OFF state (§09.4/§08.4).
+
+§21.4 Restart (CN-EDGE-RESTART)
+- Suppress empty saves across restart window; best-effort autosave before restart if not loading.
+- Reinstall subscriptions/hooks and restore UI visibility/state after reload.
+
+§21.5 Splits lifecycle (CN-EDGE-SPLITS)
+- Stats and Groups splits auto-close when Navigator closes.
+- Refit on window size changes; respect manual resizes.
+
+§21.6 Remote/TRAMP IO errors (CN-EDGE-TRAMP)
+- Treat unreadable/missing files as empty; avoid blocking UI; log succinctly.
+
+References
+- Persist: §05
+- Core lifecycle: §02
+- Groups/MG: §09
+- View: §08
+
+Contracts (IDs)
+- CN-EDGE-DEFAULTS
+- CN-EDGE-TOKENS
+- CN-EDGE-MG
+- CN-EDGE-RESTART
+- CN-EDGE-SPLITS
+- CN-EDGE-TRAMP

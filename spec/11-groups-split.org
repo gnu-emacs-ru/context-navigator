@@ -1,0 +1,31 @@
+Title: Context Navigator — 11 Groups Split (bottom pane)
+Status: Normative
+Version: 1.0
+
+§11.1 Purpose and layout
+- Bottom pane listing groups for quick selection and management.
+- Height:
+  - At most half of the Navigator sidebar height by default; fit dynamically (CN-GSPLIT-FIT).
+- Keyboard:
+  - Dedicated keymap; inherits Navigator view map for consistency (CN-GSPLIT-KEYS).
+
+§11.2 Rendering and focus
+- Render rows similar to §08.3, with selection lamps in MG (CN-GSPLIT-RENDER).
+- Opening/focus:
+  - Opening the split should retain focus in the Navigator unless explicitly moved (CN-GSPLIT-FOCUS).
+
+§11.3 Lifecycle
+- Auto-close:
+  - When the Navigator sidebar closes, the split closes too (CN-GSPLIT-AUTO-CLOSE).
+- Refit:
+  - On Navigator window size changes, refit height to avoid overflow (CN-GSPLIT-REFIT).
+
+References
+- Groups view: §08.3
+- MG semantics: §09
+- Events: §03
+
+Contracts (IDs)
+- CN-GSPLIT-FIT, CN-GSPLIT-KEYS
+- CN-GSPLIT-RENDER, CN-GSPLIT-FOCUS
+- CN-GSPLIT-AUTO-CLOSE, CN-GSPLIT-REFIT

@@ -1,0 +1,104 @@
+Title: Context Navigator — 02 Core State and Commands
+Status: Normative
+Version: 1.0
+
+§02.1 State struct and invariants
+- Structure (cl-defstruct context-navigator-state):
+  - items: List<context-navigator-item> (see §04.1). MAY contain duplicates; index is last-wins.
+  - index: Hash (key → item), last occurrence wins (CN-STATE-INDEX-LASTWINS).
+  - generation: Integer; MUST monotonically increase by 1 on any set-items (CN-STATE-GEN-MONO).
+  - inhibit-refresh: Boolean; when non-nil, UI refresh side-effects are suppressed (CN-STATE-INHIB-REFRESH).
+  - inhibit-autosave: Boolean; when non-nil, autosave is suppressed (CN-STATE-INHIB-SAVE).
+  - loading-p: Boolean; indicates an in-flight load window (CN-STATE-LOADING).
+  - last-project-root: String directory or nil (global) (CN-STATE-ROOT-SEM).
+  - current-group-slug: String or nil (CN-STATE-GROUP-SEM).
+  - load-token: Integer; incremented before load to identify in-flight operations (CN-STATE-TOKEN-MONO).
+- Invariants:
+  - CN-STATE-IMMUT: The struct is treated as immutable; only pure mutators build a new instance.
+  - CN-STATE-GEN-MONO: generation increases whenever items are installed.
+  - CN-STATE-INDEX-LASTWINS: index mirrors items with last-occurrence wins by key.
+  - CN-STATE-LOADING: During loading, inhibit flags are ON; autosave and full rerender can be suppressed.
+
+§02.2 Public mutators (API surface)
+- context-navigator-set-items(items)
+  - Prunes dead buffers; rebuilds index; increments generation; publishes :model-refreshed.
+  - Autosave: only when items actually changed and current-group-slug is non-empty (CN-AUTOSAVE-CHANGED).
+- context-navigator-add-item(item)
+  - Appends item; deduplicates by key (last wins) before installing via set-items.
+- context-navigator-remove-item-by-key(key)
+  - Removes item by stable key; installs via set-items.
+- context-navigator-toggle-item(key, &optional enabled)
+  - Flips or sets the enabled flag for item by key; installs via set-items.
+- Undo/Redo:
+  - Snapshots are lists of shallow-copied items (by fields) per-group key (ROOT|SLUG).
+  - context-navigator-undo / context-navigator-redo apply snapshots then (optionally) push to GPTel (see §02.8).
+
+§02.3 Autosave policy
+- CN-AUTOSAVE-DEB: Autosave is debounced by context-navigator-autosave-debounce on :model-refreshed bursts.
+- Suppression: Inhibit empty saves in load/restart windows; autosave only when diff is non-empty and active group exists.
+- Files: Save to <root>/.context/<slug>.el (v3 format; §05).
+
+§02.4 Display mode and UI helpers
+- Display mode (buffer/sidebar) is configured via defcustom; switching mode re-opens the UI, remembering the last choice if configured.
+- Sidebar window is marked via window parameter 'context-navigator-view.
+
+§02.5 Project switch (auto) and manual load/unload
+- Auto project switch (session flag) (CN-FLAG-AUTOPROJ):
+  - When ON, listens to :project-switch and sets state to loading (inhibit flags), opens groups list immediately, and autoloads the context when enabled (CN-PROJ-AUTOLOAD).
+- Manual load (context-navigator-context-load):
+  - Updates state to loading with inhibit flags; publishes :context-load-start; persists :current as needed; clears GPTel (best-effort) when pushing is ON; delegates async load (§05).
+- Unload:
+  - Clears GPTel (best-effort), clears model items, drops inhibit flags, publishes :context-load-done with (root=nil ok=nil).
+
+§02.6 Load lifecycle and tokens
+- CN-LOAD-TOKEN: Increment token prior to initiating async load. Any callbacks must check token to avoid out-of-order installs (race protection).
+- Publish:
+  - :group-switch-start (root slug)
+  - :context-load-start (root)
+  - :context-load-step (root pos total) (debounced in view)
+  - :context-load-done (root ok)
+  - :group-switch-done (root slug ok)
+- Finalization: Drop inhibit flags and loading-p; lift “suppress empty save” flag after load completes.
+
+§02.7 Session flags
+- context-navigator--push-to-gptel (CN-FLAG-PUSH): When ON, auto-apply to GPTel on :model-refreshed (subject to gating).
+- context-navigator--auto-project-switch (CN-FLAG-AUTOPROJ): When ON, react to :project-switch.
+
+§02.8 Apply to GPTel (auto/manual)
+- Auto apply (CN-PUSH-AUTO):
+  - On :model-refreshed, when not loading and allowed, debounce apply. In MG:
+    - Non-empty selection: aggregate ALL items across selected groups (forced enabled) → batched apply.
+    - Empty selection: clear GPTel now.
+  - Single group: apply diff/reset per §07.
+- Manual push (context-navigator-push-to-gptel-now):
+  - Clears GPTel, then batched apply of current items (ignores visible-window requirement).
+- Batching:
+  - Batched add with queue, size (context-navigator-gptel-apply-batch-size) and interval (context-navigator-gptel-apply-batch-interval).
+  - Events: :gptel-change :batch-start total, :batch-done total, :batch-cancel.
+  - Visible-window defer: when configured, poll for visible GPTel window before starting batch.
+
+§02.9 Multi-group gate for auto-push
+- CN-MG-GATE: When MG is ON and selection’s aggregated enabled count exceeds context-navigator-multigroup-autopush-threshold:
+  - Auto-push is turned OFF for the session; user is notified once (CN-MG-GATE-NOTIFY).
+  - Manual push remains available.
+
+§02.10 Restart
+- Hot restart sequence: close UI; reset event bus; reload modules in safe order; restore mode; reopen UI; reload active group or re-pick project root; re-apply keys/labels; allow saves again.
+- Suppress empty saves during restart window; best-effort autosave prior to restart if not loading.
+
+References
+- Terms: §01.3
+- Events: §03
+- Model: §04
+- Persist: §05
+- Project: §06
+- GPTel bridge: §07
+- Groups/MG: §09
+
+Contracts (IDs)
+- CN-STATE-IMMUT, CN-STATE-GEN-MONO, CN-STATE-INDEX-LASTWINS, CN-STATE-LOADING
+- CN-AUTOSAVE-DEB, CN-AUTOSAVE-CHANGED
+- CN-FLAG-PUSH, CN-FLAG-AUTOPROJ
+- CN-LOAD-TOKEN
+- CN-PUSH-AUTO
+- CN-MG-GATE, CN-MG-GATE-NOTIFY

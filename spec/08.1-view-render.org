@@ -1,0 +1,39 @@
+Title: Context Navigator — 08.1 View Rendering (lines, icons, indicators, alignment)
+Status: Normative
+Version: 1.0
+
+§08.1.1 Item line composition
+- Each item row is built as a pure string with text-properties:
+  - [indicator] [icon] name   … right-aligned relpath
+- Indicator:
+  - Style = auto | icons | text | off; fallback to text when icons unavailable.
+  - In MG mode, per-item indicators MUST be 'off (CN-VIEW-IND-MG-OFF); see §09 for MG visuals.
+- Icon:
+  - Provided by optional provider (§17); disabled on TRAMP/TTY per configuration.
+  - Icons are slightly reduced in height and raised to align with text baseline.
+- Disabled items:
+  - Dim name/row when item.enabled = nil, EXCEPT in MG selected groups (CN-VIEW-DIMMG-SUPPRESS).
+
+§08.1.2 Path prefixes and right column
+- Right-aligned relpath:
+  - Derived from absolute :path based on root; fallback to abbreviated absolute when no root.
+  - Display modes: short | relative | full; automatic degrade short→relative when overflow threshold is exceeded.
+- Alignment:
+  - Left column width computed from total width: clamp [16 .. total-10] and cap at ~55% of total.
+  - Ellipsize name when exceeding left width; right relpath elides from the left if needed.
+
+§08.1.3 Render key and skipping (CN-RENDER-KEY)
+- Key components SHOULD include:
+  - state.generation, view mode (items/groups), total width, gptel keys hash, openable counters, session flags (push/auto), header string, filter mode/query, collapse state, groups hash (when in groups mode).
+- If equal to last-render-key, full rebuild MUST be skipped; soft refresh MAY still happen (e.g., status text update).
+
+§08.1.4 Sticky restore and window-state
+- After full rebuilds, the view MAY restore:
+  - cursor to sticky item key (one-shot) or persisted anchor (§05.3 :last-items-pos)
+  - window-start to previous screen offset for smoothness
+
+References
+- Icons: §17
+- Indicators: §08.5
+- MG semantics: §09
+- Performance: §19

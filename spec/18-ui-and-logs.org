@@ -1,0 +1,29 @@
+Title: Context Navigator — 18 UI Wrappers and Logger
+Status: Normative
+Version: 1.0
+
+§18.1 UI wrappers (CN-UI)
+- info/warn/error/ask:
+  - Centralized thin wrappers around message/prompt APIs with i18n keys.
+  - ask returns boolean; callers MUST handle nil (user cancel) gracefully.
+- Consistency:
+  - All visible messages in add/mask/razor/view use i18n keys.
+
+§18.2 Logger (CN-LOG)
+- Levels/topics:
+  - :trace/:debug/:info/:warn/:error with modular topics (:core, :events, :ui, :gptel, :persist, :add, etc.).
+- Output:
+  - Dedicated buffer; optional file; message trimming to avoid growth.
+- Auto-open on error:
+  - Optional; disabled by default for tests/CI stability.
+- Safety:
+  - Logging must never throw; handlers wrap in ignore-errors.
+
+References
+- i18n: §16
+- Events: §03
+- Core/persist/gptel: §02/§05/§07
+
+Contracts (IDs)
+- CN-UI
+- CN-LOG

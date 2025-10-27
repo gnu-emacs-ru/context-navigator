@@ -1,0 +1,48 @@
+Title: Context Navigator — 20 Configuration and Feature Flags
+Status: Normative
+Version: 1.0
+
+§20.1 Categories (CN-CONF-CATS)
+- Core/session:
+  - push→gptel default, auto-project default, autosave debounce, undo depth, display mode (sidebar/buffer), buffer placement.
+- View:
+  - width, controls style (auto/icons/text), header/modeline enable, spinner frames/interval/degrade threshold.
+- GPTel:
+  - batch size/interval, require-visible-window, visible poll interval.
+- Persist:
+  - directory names/paths, create-default-group-file, persist version.
+- Add/Text/Mask:
+  - max file size, path-add-limit, index TTL, case policy, mask options (globstar, dotfiles, remote enable).
+- Stats:
+  - split default visibility, remote policy (lazy/strict/off).
+- Razor:
+  - provider/model, parse mode, size/timeouts, auto-push on apply.
+- Icons/i18n/log/logging:
+  - icon on/off, i18n locale defaults, logging verbosity/file.
+- Splits:
+  - groups split height policy, auto-close behavior.
+
+§20.2 Defaults and semantics (CN-CONF-SEM)
+- Defaults target responsive UX with safe fallbacks:
+  - Icons ON locally and OFF on TRAMP/TTY.
+  - Auto-project and push→gptel defaults ON; MG gate protects performance.
+  - Mask globstar enabled; remote masks disabled by default.
+
+§20.3 Compatibility (CN-CONF-COMP)
+- Optional dependencies (which-key, all-the-icons, gptel) are soft:
+  - Code paths MUST guard all calls; provide graceful degradation.
+- Emacs version:
+  - Avoid APIs not present in 29.1 unless optionally guarded.
+
+References
+- Core: §02
+- View: §08
+- GPTel: §07
+- Add/mask: §13.1
+- Stats: §10
+- Icons/i18n/log: §17/§16/§18
+
+Contracts (IDs)
+- CN-CONF-CATS
+- CN-CONF-SEM
+- CN-CONF-COMP

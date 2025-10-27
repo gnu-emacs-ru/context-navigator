@@ -1,0 +1,42 @@
+Title: Context Navigator — 08.5 Indicators (predictive vs actual, caching, polling)
+Status: Normative
+Version: 1.0
+
+§08.5.1 Predictive indicators
+- Definition:
+  - Compute present/absent lamps from the current model’s enabled items immediately after :model-refreshed (CN-IND-PREDICTIVE).
+  - In MG, per-item indicators are hidden in items view (CN-VIEW-IND-MG-OFF; §08.1.1); group lamps are displayed in splits (§11).
+- Scope:
+  - Predictive lamps SHOULD NOT attempt IO; use model only.
+
+§08.5.2 Actual indicators (GPTel)
+- Source:
+  - Subscribe to :gptel-change (§03.2) and refresh cached GPTel keys via the bridge pull (§07.5) (CN-IND-ACTUAL).
+  - Ignore noisy variable-watchers (CN-GPTEL-NO-WATCHERS, §07.4) — do not re-pull on spurious events.
+- Presence check:
+  - Item presence = key in GPTel keys set; selections require value-equality fallback by (type/path/beg/end) (§07.5), CN-IND-SELECTION-VALUE.
+
+§08.5.3 Caching
+- Sidebar-local cache:
+  - Maintain a buffer-local list of keys and a hash/fingerprint to avoid redundant renders (CN-IND-KEYS-CACHE).
+  - Invalidate on :gptel-change lifecycle events, model generation change, or explicit requests from view-events.
+- Soft rerender:
+  - After indicator updates, request a debounced soft rerender so the UI does not flicker (CN-IND-SOFT-REFRESH).
+
+§08.5.4 Polling (optional)
+- When context-navigator-gptel-indicator-poll-interval > 0:
+  - Start a buffer-local timer while the sidebar is visible; timer refreshes GPTel keys via pull and triggers soft rerender (CN-IND-POLLING).
+  - Stop the timer on buffer teardown; polling MUST NOT run when buffer is invisible.
+
+References
+- Events: §03
+- GPTel bridge contract: §07
+- Rendering and alignment: §08.1
+- MG semantics: §09
+- Performance/debounce: §19
+
+Contracts (IDs)
+- CN-IND-PREDICTIVE
+- CN-IND-ACTUAL, CN-IND-SELECTION-VALUE
+- CN-IND-KEYS-CACHE, CN-IND-SOFT-REFRESH
+- CN-IND-POLLING

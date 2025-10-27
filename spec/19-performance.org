@@ -1,0 +1,40 @@
+Title: Context Navigator — 19 Performance and Caches (debounce, TTL, remote)
+Status: Normative
+Version: 1.0
+
+§19.1 Caches (CN-PERF-CACHES)
+- View:
+  - relpaths (per generation/root), sorted items (per generation/root), controls string, icons, indicators keys, modeline status.
+- Add/text:
+  - project file index (TTL per root).
+- Counters:
+  - openable/closable with small TTL.
+- Stats:
+  - summary/types with TTL.
+- Invalidation:
+  - On :model-refreshed (generation change), :project-switch, :group-switch-*, theme/icon availability change, keyspec change.
+
+§19.2 Debounce and timers (CN-PERF-DEBOUNCE)
+- Debounce keys (§03.3):
+  - :sidebar-render, :preloader-render, :gptel-keys, :autosave, :gptel-apply.
+- Soft vs full renders:
+  - Prefer soft rerender (keep caches) on frequent events.
+  - Full rerender when render-key changes (§08.1.3).
+
+§19.3 Remote/TRAMP policies (CN-PERF-TRAMP)
+- Avoid heavy IO on remote roots:
+  - Disable deep scans in token/index flows; show stubs in stats.
+  - Icons disabled by default; indicators rely on events/polling only.
+- Confirm before adding remote files in bulk.
+
+References
+- Events: §03
+- View: §08
+- Add/text: §13.1
+- Stats: §10
+- Config: §20
+
+Contracts (IDs)
+- CN-PERF-CACHES
+- CN-PERF-DEBOUNCE
+- CN-PERF-TRAMP

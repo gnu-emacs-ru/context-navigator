@@ -1,0 +1,32 @@
+Title: Context Navigator — 17 Icons (providers, fallbacks, alignment)
+Status: Normative
+Version: 1.0
+
+§17.1 Provider and availability (CN-ICONS-PROV)
+- Use all-the-icons when available; load lazily; never hard-require.
+- Disable icons on TRAMP and TTY by default (configurable).
+
+§17.2 Controls and indicators (CN-ICONS-CONTROLS)
+- View controls:
+  - Provide compact icon-like labels (modeline/header), with text fallback (§08.4).
+- Indicators:
+  - Small raised icons to match the text baseline; dim/colored per state.
+
+§17.3 Caching and theme changes (CN-ICONS-CACHE)
+- Cache rendered icon strings per kind/state.
+- Invalidate on theme change and when icon availability toggles; request soft view render.
+
+§17.4 Fallbacks (CN-ICONS-FALLBACK)
+- Always provide textual fallbacks: e.g., lamps (●/○/◐), buttons ([x]/[ ]/[→]).
+- Height/baseline alignment: rendering uses display 'raise to match text.
+
+References
+- View render: §08.1
+- Indicators: §08.5
+- Controls/menu: §08.4
+
+Contracts (IDs)
+- CN-ICONS-PROV
+- CN-ICONS-CONTROLS
+- CN-ICONS-CACHE
+- CN-ICONS-FALLBACK

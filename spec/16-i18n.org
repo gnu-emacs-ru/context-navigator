@@ -1,0 +1,28 @@
+Title: Context Navigator — 16 Internationalization (i18n keys, stability)
+Status: Normative
+Version: 1.0
+
+§16.1 Dictionary and fallbacks (CN-I18N-DICT)
+- Source of truth: English (EN) strings keyed by keywords.
+- Locale selection:
+  - Auto from environment when interactive; force EN in tests (noninteractive) (CN-I18N-TEST-EN).
+- Missing keys:
+  - Fallback to EN; never signal errors in UI.
+
+§16.2 Usage and stability (CN-I18N-STABLE)
+- All UI-visible strings in controls, headers, previews, prompts, and which-key labels MUST pass through i18n using :desc-key or explicit keys.
+- Tests assert on EN strings to ensure stability across environments.
+
+§16.3 Performance
+- Small cache optional; lifespan limited to session.
+- Cache invalidation on theme change is not required; icons module handles its own refresh.
+
+References
+- Controls/menu: §08.4, §08.8
+- which-key: §15
+- UI wrappers: §18
+
+Contracts (IDs)
+- CN-I18N-DICT
+- CN-I18N-TEST-EN
+- CN-I18N-STABLE

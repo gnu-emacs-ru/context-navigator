@@ -1,0 +1,63 @@
+Title: Context Navigator — 08.2 Items (sorting, filtering, status, sticky restore)
+Status: Normative
+Version: 1.0
+
+§08.2.1 Sorting (Source of truth)
+- Natural order with numeric awareness on names/paths (CN-VIEW-SORT-NAT):
+  - Items with a valid :path are ordered before items without a path.
+  - Among items with a path: prefer items in subdirectories first; then natural sort by relpath (case-insensitive).
+  - Among items without a path: natural sort by item name (case-insensitive).
+- Relpath derivation for sorting:
+  - Derived relative to current root when available; otherwise uses the original path as-is (see §08.1.2 for derivation rules).
+  - Relpaths are cached per generation/root (CN-VIEW-RELPATH-CACHE); cache invalidated when state.generation or root changes (§19).
+- Stable cache for sorted items:
+  - The sorted copy is cached per (generation, root) when no live filter is active (CN-VIEW-SORT-CACHE).
+  - When a live filter is active, bypass the base cache (do not overwrite it) to avoid stale results.
+
+§08.2.2 Filtering
+- Name filter (CN-VIEW-FILTER-NAME):
+  - Query is split into lowercase tokens by whitespace; all tokens MUST be substrings of “name + space + relpath”.
+  - Empty query means no filtering.
+- Content filter (CN-VIEW-FILTER-CONTENT):
+  - Enabled when filter mode='content and query length ≥ 2 (CN-VIEW-FILTER-CONTENT-LEN2).
+  - Results are a hash-set of item keys; only items whose keys are present are kept.
+  - If the query length < 2 or no result-set is available, show all items (fail-safe).
+- Filter counters:
+  - View MUST update (:filter-last-count . :filter-last-total) on each filtering pass so the header segment can display N/TOTAL.
+
+§08.2.3 Status text (inline and modeline)
+- The per-point status text provider (View) MUST compute a concise description for the current line (item/group/up).
+- Modeline (see §08.8) uses status text to reflect:
+  - Items view: absolute path of the selected item when applicable.
+  - Groups view: group display name and optional description (read via persist state cache) (CN-MDL-GROUP-DESC).
+
+§08.2.4 Sticky restore (cursor/scroll)
+- Cursor:
+  - One-shot sticky anchor by item stable key MAY be used (set before re-render).
+  - Long-term persistence: persist last anchor per group in state.el as §05.3 :last-items-pos (:key or ".." and :winstart).
+- Window-start:
+  - View MAY restore previous window-start after a rebuild to avoid jumpy scrolling.
+- Enabling/disabling:
+  - The feature is controlled by a flag (see defcustom context-navigator-view-restore-cursor). When disabled, view MUST NOT persist or restore anchors.
+
+§08.2.5 Counters (openable/closable)
+- Openable counters:
+  - View uses a counters module to compute “openable” buffers and soft caps with small TTL (CN-COUNTERS-OPENABLE-TTL).
+  - Counters MUST be invalidated on model generation change or explicit requests from view-events.
+- Closable:
+  - View collects currently closable buffers (buffers opened from items) via counters module (informative for menu/tooling).
+- Remote safety:
+  - Counters SHOULD avoid heavy operations on TRAMP roots; follow §19 TRAMP guidelines.
+
+References
+- Rendering: §08.1
+- Model/keys: §04
+- Core/state and generation: §02
+- Persist/state.el: §05
+- Performance/caches: §19
+
+Contracts (IDs)
+- CN-VIEW-SORT-NAT, CN-VIEW-RELPATH-CACHE, CN-VIEW-SORT-CACHE
+- CN-VIEW-FILTER-NAME, CN-VIEW-FILTER-CONTENT, CN-VIEW-FILTER-CONTENT-LEN2
+- CN-MDL-GROUP-DESC
+- CN-COUNTERS-OPENABLE-TTL

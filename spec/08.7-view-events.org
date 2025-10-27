@@ -1,0 +1,44 @@
+Title: Context Navigator — 08.7 View Events (subscriptions, timers, cursor/filters)
+Status: Normative
+Version: 1.0
+
+§08.7.1 Subscriptions (buffer-local)
+- Install on buffer creation; remove on teardown:
+  - :model-refreshed → render/schedule soft rerender; update predictive indicators (CN-VW-SUB-MODEL)
+  - :context-load-start/step/done → preloader progress; spinner start/stop; render (CN-VW-SUB-LOAD)
+  - :project-switch → header update; optional group listing (CN-VW-SUB-PROJECT)
+  - :group-switch-start/done → cursor restoration setup; items rerender; drop suppress flags after done (§02.6) (CN-VW-SUB-GROUP)
+  - :gptel-change → indicators update; soft rerender (CN-VW-SUB-GPTEL)
+
+§08.7.2 Debounces and timers
+- Debounce keys (§03.3):
+  - :sidebar-render for view rebuilds
+  - :preloader-render for progress
+  - :gptel-keys for indicator pulls
+- Spinner:
+  - Timer runs during loading; degrades to static on timer slippage threshold (§08-view-overview, §08.1) (CN-VW-SPINNER-DEGRADE).
+
+§08.7.3 Cursor/scroll tracking and persistence
+- Track current line anchor (item key or "..") on post-command; persist last position on buffer exit/teardown as §05.3 :last-items-pos (CN-VW-CURSOR-TRACK, CN-VW-CURSOR-PERSIST).
+- Sticky restore:
+  - One-shot sticky (buffer local) and persisted anchor are used after full rebuilds (§08.2.4).
+
+§08.7.4 Filters (name/content)
+- View maintains buffer-local filter mode/query/results (CN-VW-FILTER-STATE):
+  - Name filter applies substring AND across tokenized query (§08.2).
+  - Content filter uses a results hash-set (keys) from external scans; view respects the set and displays N/TOTAL counters in header.
+- Clearing filter:
+  - Header-line shows [×] segment; mouse/TAB/RET clear the filter (CN-VW-FILTER-CLEAR-SEGMENT).
+
+References
+- Events bus: §03
+- Core lifecycle: §02
+- Persist/state: §05
+- Items rendering and filters: §08.2
+- Spinner: §08.1, view-spinner helpers in code
+
+Contracts (IDs)
+- CN-VW-SUB-MODEL, CN-VW-SUB-LOAD, CN-VW-SUB-PROJECT, CN-VW-SUB-GROUP, CN-VW-SUB-GPTEL
+- CN-VW-SPINNER-DEGRADE
+- CN-VW-CURSOR-TRACK, CN-VW-CURSOR-PERSIST
+- CN-VW-FILTER-STATE, CN-VW-FILTER-CLEAR-SEGMENT

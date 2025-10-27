@@ -1,0 +1,54 @@
+Title: Context Navigator — 06 Project Model and Auto-Project
+Status: Normative
+Version: 1.0
+
+§06.1 Root detection (Source of truth)
+- Primary: project.el (project-current) → project-root
+- Fallbacks (in order):
+  1) Frame-first file-visiting window’s project (stable window order; avoids mixing contexts)
+  2) Most recently visited file-backed buffer’s project
+  3) First “interesting” buffer’s project
+  4) nil (global "~")
+- Interesting buffers (SHOULD return true):
+  - visiting files (any major mode)
+  - Dired, Org, GPTel, shell/term/comint/eshell
+  - Exclude minibuffer and ephemeral completion popups
+- CN-PROJECT-ROOT-SEM: nil denotes global (“~”) scope; group files resolve under global dir (§05.1).
+
+§06.2 Auto-project switch (session flag)
+- Flag (Core): context-navigator--auto-project-switch
+  - When ON, Core subscribes to :project-switch and updates state to loading (§02.5).
+  - When OFF, :project-switch is ignored; state/headers remain unchanged.
+- Throttling:
+  - context-navigator-context-switch-interval (seconds) SHOULD prevent rapid flapping between roots.
+- Sticky last root:
+  - CN-PROJECT-STICKY: When switching to nil/global, do not “bounce” between nil and previous root unnecessarily; keep last meaningful root cached.
+
+§06.3 Project switch event contract
+- Topic: :project-switch (see §03)
+  - Payload: (ROOT) where ROOT is string or nil
+- Core reaction:
+  - Set inhibit-refresh/autosave flags (loading window)
+  - Update last-project-root, publish groups list (best-effort), optionally autoload (§02.5)
+  - Clear GPTel (best-effort) when push→gptel is ON (async), then load context.
+
+§06.4 Manual project selection helpers
+- When user toggles auto-project ON from a Navigator window, Core SHOULD:
+  - Prefer the first file-visiting window on the current frame that is not the Navigator window.
+  - Publish :project-switch ROOT immediately for responsive UX.
+- Commands MAY provide explicit “switch to current buffer’s project” (manual one-shot).
+
+§06.5 TRAMP and remote projects
+- Remote roots are allowed; expensive operations SHOULD be lazy or skipped:
+  - No deep recursive scans for indices by default (§13.1.2, §19.3)
+  - View remains responsive and shows preloader during IO (§08)
+
+References
+- Core wiring: §02.5
+- Events: §03
+- Persist: §05
+- Performance: §19
+
+Contracts (IDs)
+- CN-PROJECT-ROOT-SEM
+- CN-PROJECT-STICKY

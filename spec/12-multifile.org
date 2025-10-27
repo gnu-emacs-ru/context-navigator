@@ -1,0 +1,58 @@
+Title: Context Navigator — 12 Multifile View (aggregate/section editing)
+Status: Normative
+Version: 1.0
+
+§12.1 Purpose
+- Provide a single buffer to browse and edit context items across files safely:
+  - Sections per item with indicator + icon + [on/off] + name on the left; right-aligned relpath (CN-MF-SECTION-LINE).
+  - Actions [visit] [t] [d] [p] as clickable segments (mouse/RET) (CN-MF-ACTIONS).
+  - Local filter to show only enabled items (toggle in header) (CN-MF-FILTER).
+
+§12.2 Header-line controls
+- Controls:
+  - [collapse-all], [filter-enabled-only], [Edit All], [× close]
+- Style follows controls §08.4, with icons fallback; clickable segments use sparse keymaps (CN-MF-HEADER-CONTROLS).
+
+§12.3 Section collapses and navigation
+- Per-section collapse state by item key; global collapse-all overrides per-section (CN-MF-COLLAPSE).
+- TAB toggles the section at point (when on header) or moves to next header (CN-MF-TAB-TOGGLE).
+- j/k (or next/prev) navigate between section headers (CN-MF-NAV).
+
+§12.4 Previews and remote policy
+- File items:
+  - Preview head or full file per configuration with optional byte cap; TRAMP policy: lazy/strict/off (CN-MF-FILE-PREVIEW).
+- Selection items:
+  - Preview first N lines of the selection region from base buffer/file; robust to stale bounds by clamping (CN-MF-SELECTION-PREVIEW).
+- Buffer items:
+  - Show note or file preview when visiting file is available (CN-MF-BUFFER-PREVIEW).
+
+§12.5 Editing selections (indirect + narrow)
+- Edit:
+  - Clone an indirect buffer of the base, narrow to region (clamped to current buffer bounds), make writable, add after-save hook for auto-push (CN-MF-INDIRECT-EDIT).
+- After-save auto-push:
+  - When push→gptel is ON, apply the current model to GPTel after save (CN-MF-AFTER-SAVE).
+- Edit All:
+  - Open indirect buffers for all selection items (with confirmation beyond threshold) (CN-MF-EDIT-ALL).
+
+§12.6 GPTel actions
+- [p] toggles membership of the item in GPTel explicitly (ignores auto-push flag), reporting :added/:removed/:noop (CN-MF-GPTEL-TOGGLE).
+- Indicators reflect cached GPTel keys (CN-MF-INDICATORS).
+
+§12.7 Cleanup
+- On Multifile buffer close:
+  - Unsubscribe buffer-local events; kill indirect buffers if configured (CN-MF-CLEANUP).
+
+References
+- Items and keys: §04
+- Controls: §08.4
+- Indicators: §08.5
+- Events: §03
+- Config: §20
+
+Contracts (IDs)
+- CN-MF-SECTION-LINE, CN-MF-ACTIONS, CN-MF-FILTER, CN-MF-HEADER-CONTROLS
+- CN-MF-COLLAPSE, CN-MF-TAB-TOGGLE, CN-MF-NAV
+- CN-MF-FILE-PREVIEW, CN-MF-SELECTION-PREVIEW, CN-MF-BUFFER-PREVIEW
+- CN-MF-INDIRECT-EDIT, CN-MF-AFTER-SAVE, CN-MF-EDIT-ALL
+- CN-MF-GPTEL-TOGGLE, CN-MF-INDICATORS
+- CN-MF-CLEANUP

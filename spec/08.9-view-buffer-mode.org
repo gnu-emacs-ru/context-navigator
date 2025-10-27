@@ -1,0 +1,29 @@
+Title: Context Navigator — 08.9 Buffer Mode (magit-like window policies)
+Status: Normative
+Version: 1.0
+
+§08.9.1 Opening and placement
+- Display policy (defcustom context-navigator-buffer-placement):
+  - 'reuse-other-window: prefer other-window; otherwise split
+  - 'split-right: split selected window right
+  - 'split-below: split selected window below
+- Window parameter:
+  - Windows showing the Navigator buffer in buffer mode MUST set (window-parameter 'context-navigator-view 'buffer) (CN-BUF-WINPARAM).
+- Remember/restore display mode per feature flag (context-navigator-remember-display-mode).
+
+§08.9.2 Closing/toggling
+- Close only windows marked with the 'buffer parameter for the Navigator buffer; leave unrelated windows intact (CN-BUF-CLOSE-SAFE).
+- Toggle switches between open/close using the same placement policy.
+
+§08.9.3 Modeline and header-line
+- Apply the same minimal modeline toolbar as in sidebar (§08.8) (CN-BUF-MODELINE-APPLY).
+- Header-line: show title (project[: group]) consistent with sidebar (§08-view-overview).
+
+References
+- Core display entrypoints: §02.4
+- Modeline toolbar: §08.8
+
+Contracts (IDs)
+- CN-BUF-WINPARAM
+- CN-BUF-CLOSE-SAFE
+- CN-BUF-MODELINE-APPLY

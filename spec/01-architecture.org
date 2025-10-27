@@ -1,0 +1,77 @@
+Title: Context Navigator — 01 Architecture and Glossary
+Status: Informative (architecture), Normative (glossary)
+Version: 1.0
+
+§01.1 Overview
+- CN is a functional-core + message-driven UI:
+  - Core (§02): immutable state struct; pure mutators; autosave; batch integration with GPTel.
+  - Events (§03): lightweight publish/subscribe, safe subscribers; debouncer with keyed timers.
+  - Model (§04): item struct, stable keys, diff/uniq/index semantics.
+  - Persist (§05): v3 on-disk format; async load; state.el with :current/:multi/:selected.
+  - Project (§06): root detection and :project-switch.
+  - GPTel bridge (§07): apply diff/reset, batch lifecycle and indicators.
+  - View (§08): sidebar/buffer rendering; indicators; modeline toolbar; navigation; splits (Stats/Groups).
+  - Groups (§09): CRUD; multi-group selection; aggregated operations and push semantics.
+  - Stats (§10): lightweight split with TTL cache.
+  - Add flows (§13): universal add (Dired/region/file/buffer), names-from-text, masks.
+  - Razor (§14): selection minimization pipeline (LLM), safe by design.
+  - Keys/i18n/icons/logs/perf/config/edges: §15–§21.
+
+§01.2 Module map (code → spec anchor)
+- lisp/context-navigator-core.el → §02
+- lisp/context-navigator-events.el → §03
+- lisp/context-navigator-model.el → §04
+- lisp/context-navigator-persist.el → §05
+- lisp/context-navigator-project.el → §06
+- lisp/context-navigator-gptel-bridge.el → §07
+- lisp/context-navigator-view*.el (render, items, groups, indicators, modeline, navigation, spinner, buffer) → §08.*
+- lisp/context-navigator-groups*.el → §09, §11
+- lisp/context-navigator-stats*.el → §10
+- lisp/context-navigator-add*.el → §13.*
+- lisp/context-navigator-razor.el → §14
+- lisp/context-navigator-keyspec.el, which-key → §15
+- lisp/context-navigator-i18n.el → §16
+- lisp/context-navigator-icons.el → §17
+- lisp/context-navigator-log.el → §18
+- lisp/context-navigator-fp.el → helpers (referenced by §02, §04)
+- lisp/context-navigator-compat.el → §18/§20/§21 (compat)
+- lisp/context-navigator-render.el → §08.1 (pure render helpers)
+
+§01.3 Glossary (Source of truth)
+- item: A context entry with fields defined in §04.1.
+- stable key (item key): Canonical unique ID of an item. Grammar in §04.2.
+- enabled: Boolean flag on item controlling inclusion in GPTel (bridge applies semantics; §07).
+- group: Named collection of items persisted as <root>/.context/<slug>.el (§05).
+- display name (group): Human-friendly name; slug is file name stem (§09).
+- project root (root): Directory representing current project scope; nil denotes global (~) (§06).
+- MG (multi-group): Per-root state enabling selection of multiple groups (§09).
+- selection item: Item referencing a region within a file (type 'selection') (§04.1).
+- buffer item: Item referencing a buffer (type 'buffer') (§04.1).
+- file item: Item referencing a file (type 'file') (§04.1).
+- load token: Monotonic token to identify in-flight loads and avoid race conditions (§02.6).
+- render key: Composite fingerprint controlling full rerender skip (§08.1/§08.6).
+- predictive indicators: Lamps computed from current enabled items; refined by gptel events/polling (§08.5/§07).
+- auto-project: Session flag to react to :project-switch events; may auto-load context (§02.7, §06).
+- push→gptel: Session flag controlling auto-application of model to GPTel (§02.8).
+- batches: Background operations that add items to GPTel incrementally (§02.8/§07.6).
+- Stats split: 5-line auxiliary view showing counters (§10).
+- Groups split: bottom pane listing groups with selection lamps in MG (§11).
+- Multifile view: Aggregated buffer to preview/edit items safely (§12).
+
+§01.4 High-level flows (informative)
+- Startup (context-navigator-start):
+  - Enable mode; set session flags to defaults; refresh; open UI.
+- Project switch (auto):
+  - Publish :project-switch; set loading flags; optionally auto-load current group; preloader shows; batch clear/apply as needed.
+- Group switch:
+  - :group-switch-start → persist :current async → async load group v3 → on success, set items → finalize load → :group-switch-done → push if enabled.
+- Auto-push (single group):
+  - On :model-refreshed and when allowed, debounce apply to GPTel (diff or reset), respecting session flags and loading state.
+- Auto-push (MG):
+  - Non-empty selection → aggregate ALL items across selected groups (forced enabled) and push; empty selection → clear GPTel.
+
+References
+- Terms: §01.3
+- Model: §04
+- Events: §03
+- Core: §02

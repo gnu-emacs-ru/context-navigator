@@ -1,0 +1,35 @@
+Title: Context Navigator — 08.6 Navigation (TAB, items/groups, segments)
+Status: Normative
+Version: 1.0
+
+§08.6.1 Interactive segments and properties
+- The View marks navigable elements with properties:
+  - 'context-navigator-interactive (segments like toggles/actions)
+  - 'context-navigator-item (items)
+  - 'context-navigator-group-slug (groups)
+  - 'context-navigator-action / 'context-navigator-toggle (controls)
+- Segment scanners:
+  - Next/previous interactive position find runs by properties and use exclusive semantics (skip within-run) (CN-NAV-SCANNERS).
+
+§08.6.2 TAB navigation
+- TAB moves to the next interactive element; Shift-TAB moves to the previous (wrap-around) (CN-NAV-TAB).
+- The title and stats header act as interactive elements but are skipped by next-item/prev-item commands unless explicitly targeted (CN-NAV-SKIP-TITLE-FOR-ITEMS).
+
+§08.6.3 Item/group navigation
+- Next-item (j/Down) and Previous-item (k/Up) move between rows carrying either 'item or 'group-slug (wrap-around), placing point at BOL (CN-NAV-ITEM-MOVES).
+- Behavior is consistent across items and groups modes.
+
+§08.6.4 Keymaps
+- Major mode map provides minimal remaps; complete bindings come from keyspec (§15).
+- Interactive segments inherit the major mode map so navigation keys continue to work inside segments (CN-NAV-INHERIT-PARENT).
+
+References
+- View composition: §08.1–§08.3
+- Keyspec: §15
+
+Contracts (IDs)
+- CN-NAV-SCANNERS
+- CN-NAV-TAB
+- CN-NAV-SKIP-TITLE-FOR-ITEMS
+- CN-NAV-ITEM-MOVES
+- CN-NAV-INHERIT-PARENT

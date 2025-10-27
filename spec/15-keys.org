@@ -1,0 +1,50 @@
+Title: Context Navigator — 15 Keyspec, Transient, which-key
+Status: Normative
+Version: 1.0
+
+§15.1 Keyspec (Source of truth) (CN-KEYSPEC)
+- An entry is a plist with fields:
+  - :id symbol (stable identifier)
+  - :cmd symbol (interactive command)
+  - :keys list<string> (preferred bindings)
+  - :contexts list<symbol> (e.g., items, multifile, groups-split, global)
+  - :section symbol (for transient grouping and help layout)
+  - :desc-key keyword for i18n lookup (§16)
+  - Optional overlays/profile selectors (implementation-specific)
+- Effective keys:
+  - Builder computes “effective” keys per context (merging overlays).
+  - Idempotent; re-application should not produce duplicates.
+
+§15.2 Applying to maps (CN-KEYS-APPLY)
+- Mode maps:
+  - context-navigator-view-mode-map ← context items (context=items)
+  - context-navigator-multifile-mode-map ← multifile (context=multifile)
+  - context-navigator-groups-split-mode-map ← groups split (contexts=global,groups-split)
+- which-key integration (optional):
+  - Map human labels from :desc-key through i18n (§16).
+  - Normalize key names: TAB/RET/SPC, S-TAB, etc.
+  - Re-apply on keyspec variable change (variable watcher).
+
+§15.3 Transient menu (CN-TRANSIENT)
+- Built dynamically from keyspec with sections:
+  - Navigate, Actions, Session, Tools, Logs (implementation may vary).
+- Availability:
+  - Show toggles reflecting session flags (push→gptel, auto-project).
+  - MG gate state (auto-push disabled) must be surfaced with a hint (§02.9, §08.4).
+- Placement:
+  - Use posframe/window when available; fallback to help buffer.
+
+§15.4 Stability and tests
+- Stable IDs and :desc-key ensure i18n labels remain consistent in tests (EN locale).
+- Keymaps should remain minimal; most bindings come from keyspec.
+- Changes to default keys require spec update and test refresh.
+
+References
+- View maps: §08.6
+- i18n: §16
+- UI/help: §18
+
+Contracts (IDs)
+- CN-KEYSPEC
+- CN-KEYS-APPLY
+- CN-TRANSIENT

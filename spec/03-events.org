@@ -1,0 +1,63 @@
+Title: Context Navigator — 03 Events and Debouncer
+Status: Normative
+Version: 1.0
+
+§03.1 Event bus contract
+- Publish/subscribe API:
+  - (context-navigator-events-subscribe TOPIC FN) → token (TOPIC . FN)
+  - (context-navigator-events-unsubscribe TOKEN)
+  - (context-navigator-events-publish TOPIC &rest ARGS)
+- Safety:
+  - Subscribers MUST NOT signal errors; the bus catches and logs them.
+  - Publishing copies the subscriber list before iteration (no mid-iteration mutation effects).
+- Tests MAY reset the bus via (context-navigator-events-reset).
+
+§03.2 Topics and payloads (Source of truth)
+- :model-refreshed
+  - Args: (STATE)
+  - Notes: STATE is a context-navigator-state (see §02).
+- :project-switch
+  - Args: (ROOT)
+  - ROOT is string path or nil (global).
+- :context-load-start
+  - Args: (ROOT)
+- :context-load-step
+  - Args: (ROOT POS TOTAL)
+  - POS/TOTAL are integers for progress; view debounces preloader rerenders.
+- :context-load-done
+  - Args: (ROOT OK)
+  - OK is boolean (t when load succeeded).
+- :groups-list-updated
+  - Args: (ROOT GROUPS)
+  - Optional; when groups list is published (implementation-specific). View treats groups via cached locals too.
+- :group-switch-start
+  - Args: (ROOT SLUG)
+- :group-switch-done
+  - Args: (ROOT SLUG OK)
+- :gptel-change
+  - Args: either lifecycle or source-symbol and details
+    - Lifecycle subtypes:
+      - (:batch-start TOTAL)
+      - (:batch-done TOTAL)
+      - (:batch-cancel)
+    - Diff/reset/add/remove:
+      - (:diff OPS)
+      - (:reset COUNT)
+      - (:add COUNT)
+      - (:remove COUNT)
+    - (:on-load) — emitted when GPTel loads; signals that indicators may be stale.
+  - Noisy sources (variable watchers) MUST be ignored by indicator handlers (see §08.5).
+
+§03.3 Debouncer
+- API: (context-navigator-events-debounce KEY DELAY FN)
+  - Cancels any existing timer for KEY, schedules FN.
+- Cancel: (context-navigator-events-cancel KEY) cancels and removes a pending timer.
+- Usage:
+  - Sidebar render: KEY :sidebar-render, small delay (~0.12s).
+  - Preloader progress: KEY :preloader-render, small delay.
+  - GPTel indicator refresh: KEY :gptel-keys.
+  - Autosave debounce: KEY :autosave (used by core, see §02.3).
+
+References
+- Core: §02
+- View indicators: §08.5

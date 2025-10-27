@@ -1,0 +1,60 @@
+Title: Context Navigator — 09 Groups and Multi-Group (CRUD, selection, semantics)
+Status: Normative
+Version: 1.0
+
+§09.1 CRUD operations (Source of truth)
+- Create:
+  - Create new group under <root>/.context/<slug>.el (v3, §05.2). Slug is derived from a display name via slugify (lowercase, dash-separated) (CN-GROUPS-CREATE).
+- Rename:
+  - Update file name and state.el entries; preserve items content. Ensure atomic write or best-effort backup (CN-GROUPS-RENAME).
+- Delete:
+  - Remove group file; update state.el (:current may move to "default" if deleted group was active) (CN-GROUPS-DELETE).
+- Duplicate:
+  - Create a new group with items copied; new slug chosen from provided display or suffix counter (CN-GROUPS-DUPLICATE).
+- Edit description:
+  - Update state.el :descriptions (slug . string) (CN-GROUPS-EDIT-DESC).
+
+§09.2 Groups list and mapping
+- Source:
+  - List groups by enumerating v3 files under <root>/.context (project) or <global-dir> (global) (CN-GROUPS-LIST).
+- Display mapping:
+  - state.el :groups alist (display . slug) is an optional cache. Rendering MUST tolerate it being absent and fallback to slug as display (CN-GROUPS-DISPLAY-MAP).
+
+§09.3 Group switching
+- Core lifecycle:
+  - Publish :group-switch-start, persist :current (async) and then load group asynchronously (§02.6/§05.4); on completion publish :group-switch-done (CN-GROUPS-SWITCH-LIFECYCLE).
+- On failure:
+  - Keep previous items; optionally auto-switch view to groups list (§08.3.4).
+
+§09.4 Multi-group semantics (Source of truth)
+- state.el:
+  - :multi (boolean) toggles MG; :selected (list<string>) holds selected slugs (empty list = no selection) (CN-MG-STATE).
+- Behavior:
+  - Per-item toggles in Items view are FORBIDDEN in MG (CN-MG-PERITEM-LOCK) — see §08.1.1 for indicator suppression.
+  - Non-empty selection:
+    - Aggregated ALL items across selected groups are pushed to GPTel (forced enabled) for Auto-push and Push-now (CN-MG-AGG-ALL).
+  - Empty selection:
+    - GPTel is cleared when MG is ON (CN-MG-CLEAR-EMPTY).
+- Gate:
+  - Auto-push gate per threshold (§02.9). When exceeded, auto-push turns OFF with one-shot notification (CN-MG-GATE).
+
+§09.5 Rendering in MG
+- Groups list shows selection lamps per row (CN-VIEW-GROUPS-MG-LAMP; §08.3.2).
+- In Items view for MG selections:
+  - Do not dim disabled rows inside selected groups to avoid conflicting semantics (CN-VIEW-DIMMG-SUPPRESS; §08.1.1).
+
+§09.6 Push semantics and commands
+- Push-now aggregates across selected groups as in §02.8 (forced enabled) (CN-MG-PUSH-NOW).
+- Manual “apply selection to GPTel” entrypoints SHOULD ignore visible-window requirement (for responsiveness) unless configured otherwise.
+
+References
+- Persist/state.el and group files: §05
+- Core lifecycle and push: §02
+- View indicators and rendering rules: §08
+
+Contracts (IDs)
+- CN-GROUPS-CREATE, CN-GROUPS-RENAME, CN-GROUPS-DELETE, CN-GROUPS-DUPLICATE, CN-GROUPS-EDIT-DESC
+- CN-GROUPS-LIST, CN-GROUPS-DISPLAY-MAP
+- CN-GROUPS-SWITCH-LIFECYCLE
+- CN-MG-STATE, CN-MG-PERITEM-LOCK, CN-MG-AGG-ALL, CN-MG-CLEAR-EMPTY, CN-MG-GATE
+- CN-MG-PUSH-NOW
