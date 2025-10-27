@@ -55,6 +55,27 @@
   "Directory names to exclude in fallback recursion."
   :type '(repeat string) :group 'context-navigator-path-add)
 
+(defcustom context-navigator-path-add-fallback-enabled nil
+  "When non-nil, allow fallback recursive scan if project.el and git index are unavailable.
+Set to nil to completely disable fallback scanning (default)."
+  :type 'boolean :group 'context-navigator-path-add)
+
+(defcustom context-navigator-path-add-fallback-max-files 50000
+  "Hard cap on number of files collected by fallback recursion before aborting."
+  :type 'integer :group 'context-navigator-path-add)
+
+(defcustom context-navigator-path-add-fallback-max-depth 12
+  "Maximum directory recursion depth for fallback traversal."
+  :type 'integer :group 'context-navigator-path-add)
+
+(defcustom context-navigator-path-add-fallback-top-level-max 8000
+  "Abort fallback immediately when the top-level directory has more than this many entries."
+  :type 'integer :group 'context-navigator-path-add)
+
+(defcustom context-navigator-path-add-fallback-time-budget 2.5
+  "Soft time budget in seconds for fallback traversal; abort when exceeded."
+  :type 'number :group 'context-navigator-path-add)
+
 ;; Masks/globs controls (v1)
 (defcustom context-navigator-mask-include-dotfiles nil
   "When non-nil, include dotfiles even if pattern components do not start with a dot.
@@ -298,19 +319,59 @@ Steps:
          (not (string-prefix-p "." bn)))
      (not (member bn context-navigator-path-add-fallback-exclude)))))
 
+(defun context-navigator-path-add--unsafe-root-p (root)
+  "Return non-nil when ROOT is an unsafe filesystem root for fallback scanning."
+  (let* ((r (file-name-as-directory (expand-file-name root))))
+    (or (string= r "/")
+        (string-match-p "\\=[A-Za-z]:/\\'" r))))
+
 (defun context-navigator-path-add--project-files-fallback (root)
-  "Recursive directory listing (filtered). Return absolute files."
-  (let ((res '()))
-    (dolist (entry (directory-files root t nil t))
-      (let ((bn (file-name-nondirectory entry)))
-        (cond
-         ((member bn '("." ".." ".git"))) ;; skip
-         ((file-directory-p entry)
-          (when (context-navigator-path-add--fallback-dir-p-allowed entry)
-            (setq res (append res (context-navigator-path-add--project-files-fallback entry)))))
-         ((file-regular-p entry)
-          (push entry res)))))
-    res))
+  "Recursive directory listing (filtered) with safety limits. Return absolute files.
+
+Respects:
+- =context-navigator-path-add-fallback-enabled'
+- =context-navigator-path-add-fallback-top-level-max'
+- =context-navigator-path-add-fallback-max-files'
+- =context-navigator-path-add-fallback-max-depth'
+- =context-navigator-path-add-fallback-time-budget'
+
+Skips .git, dot-dirs when configured, and symlinked directories."
+  (let* ((root (directory-file-name (expand-file-name root))))
+    (if (or (not context-navigator-path-add-fallback-enabled)
+            (context-navigator-path-add--unsafe-root-p root)
+            (let* ((top (ignore-errors (directory-files root nil nil t)))
+                   (n (and (listp top) (length top))))
+              (and (integerp n)
+                   (> n (or context-navigator-path-add-fallback-top-level-max 8000)))))
+        '()
+      (let* ((max-files (or context-navigator-path-add-fallback-max-files 50000))
+             (max-depth (or context-navigator-path-add-fallback-max-depth 12))
+             (budget   (or context-navigator-path-add-fallback-time-budget 0))
+             (start    (float-time))
+             (res '())
+             (count 0))
+        (cl-labels
+            ((recurse (dir depth)
+               (when (<= depth max-depth)
+                 (dolist (entry (directory-files dir t nil t))
+                   (let ((bn (file-name-nondirectory entry)))
+                     (cond
+                      ((member bn '("." ".." ".git"))) ;; skip
+                      ((file-directory-p entry)
+                       (when (and (context-navigator-path-add--fallback-dir-p-allowed entry)
+                                  (not (file-symlink-p entry)))
+                         (recurse entry (1+ depth))))
+                      ((file-regular-p entry)
+                       (push entry res)
+                       (setq count (1+ count))
+                       (when (>= count max-files)
+                         (throw 'cn-fallback-limit t)))))
+                   (when (and (numberp budget) (> budget 0)
+                              (> (- (float-time) start) budget))
+                     (throw 'cn-fallback-limit t))))))
+          (catch 'cn-fallback-limit
+            (recurse root 0))
+          res)))))
 
 (defun context-navigator-project-file-index (root)
   "Return list of absolute file paths for ROOT, with TTL cache."
@@ -324,7 +385,15 @@ Steps:
           (remote '())
           ((context-navigator-path-add--project-files-project-el abs-root))
           ((context-navigator-path-add--project-files-git abs-root))
-          (t (context-navigator-path-add--project-files-fallback abs-root)))))))
+          (t
+           (if (and context-navigator-path-add-fallback-enabled
+                    (not (context-navigator-path-add--unsafe-root-p abs-root))
+                    (let* ((top (ignore-errors (directory-files abs-root nil nil t)))
+                           (n (and (listp top) (length top))))
+                      (and (integerp n)
+                           (<= n (or context-navigator-path-add-fallback-top-level-max 8000)))))
+               (context-navigator-path-add--project-files-fallback abs-root)
+             '())))))))
 
 ;; -----------------------------------------------------------------------------
 ;; Token extraction
@@ -642,9 +711,11 @@ Handles ambiguities/unresolved/limits/remote confirmation. Returns plist result.
         (let ((sample (string-join (cl-subseq unr 0 (min 10 (length unr))) ", ")))
           (context-navigator-ui-info :unresolved-found sample)))
       (when (and (not aborted) too-many)
-        (context-navigator-ui-warn :too-many (length files) (or context-navigator-path-add-limit 50))
-        (setq result (plist-put (copy-sequence res) :aborted :too-many))
-        (setq aborted t))
+        (if (context-navigator-path-add--preview-and-confirm files res)
+            (setq aborted nil)
+          (context-navigator-ui-info :aborted)
+          (setq result (plist-put (copy-sequence res) :aborted :too-many))
+          (setq aborted t)))
       (when (and (not aborted)
                  (> (plist-get res :remote) 0)
                  (not (context-navigator-ui-ask :remote-warning (plist-get res :remote))))
@@ -716,21 +787,24 @@ Handles ambiguities/unresolved/limits/remote confirmation. Returns plist result.
         ;; Нечего добавлять
         (if (not (and (listp files) (> (length files) 0)))
             (context-navigator-ui-info :unresolved-found)
-          ;; Превью + подтверждение
-          (if (not (context-navigator-path-add--preview-and-confirm files stats))
-              (context-navigator-ui-info :aborted)
-            ;; Добавление и пуш (батч)
-            (let* ((st-before (context-navigator--state-get))
-                   (items-before (and st-before (context-navigator-state-items st-before)))
-                   (added (context-navigator-path-add--append-files-as-items files))
-                   (st-after (context-navigator--state-get))
-                   (items-after (and st-after (context-navigator-state-items st-after)))
-                   (diff (context-navigator-model-diff (or items-before '()) (or items-after '())))
-                   (adds (plist-get diff :add)))
-              (when (fboundp 'context-navigator-add--ui-refresh-now)
-                (context-navigator-add--ui-refresh-now t))
-              (context-navigator-path-add--maybe-apply-to-gptel adds)
-              (context-navigator-ui-info :added-files added))))))))
+          ;; Подтверждение: большие наборы → превью, иначе только минибуфер
+          (let ((proceed (if too-many
+                             (context-navigator-path-add--preview-and-confirm files stats)
+                           (context-navigator-ui-ask :confirm-add (length files)))))
+            (if (not proceed)
+                (context-navigator-ui-info :aborted)
+              ;; Добавление и пуш (батч)
+              (let* ((st-before (context-navigator--state-get))
+                     (items-before (and st-before (context-navigator-state-items st-before)))
+                     (added (context-navigator-path-add--append-files-as-items files))
+                     (st-after (context-navigator--state-get))
+                     (items-after (and st-after (context-navigator-state-items st-after)))
+                     (diff (context-navigator-model-diff (or items-before '()) (or items-after '())))
+                     (adds (plist-get diff :add)))
+                (when (fboundp 'context-navigator-add--ui-refresh-now)
+                  (context-navigator-add--ui-refresh-now t))
+                (context-navigator-path-add--maybe-apply-to-gptel adds)
+                (context-navigator-ui-info :added-files added)))))))))
 
 ;;;###autoload
 (defun context-navigator-add-from-minibuffer ()
@@ -988,6 +1062,9 @@ Heuristic v1:
      ;; Prefer project index (fast), then filter by scan-root prefix
      ((and (listp idx) (> (length idx) 0))
       (cl-remove-if-not in-scan-p idx))
+     ;; No project detected -> do not scan at all
+     ((eq base 'project)
+      '())
      ;; Fallback: recursive scan from scan-root with exclusions (dotdirs and custom)
      (t
       (ignore-errors (context-navigator-path-add--project-files-fallback scan-root))))))
