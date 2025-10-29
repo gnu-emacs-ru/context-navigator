@@ -23,6 +23,13 @@ Version: 1.0
 - Major mode map provides minimal remaps; complete bindings come from keyspec (§15).
 - Interactive segments inherit the major mode map so navigation keys continue to work inside segments (CN-NAV-INHERIT-PARENT).
 
+§08.6.5 Select by name (CN-NAV-SELECT-BY-NAME)
+- Provide a command to jump to and open a context item by label:
+  - Uses consult when available (fuzzy/live), falls back to completing-read.
+  - Labels are “<name> — <relpath-or-buffer>”; duplicate labels are disambiguated with (N).
+  - Opening in other-window is preferred when invoked from the sidebar window.
+  - For selection items, activate the region after visiting.
+
 References
 - View composition: §08.1–§08.3
 - Keyspec: §15
@@ -33,3 +40,4 @@ Contracts (IDs)
 - CN-NAV-SKIP-TITLE-FOR-ITEMS
 - CN-NAV-ITEM-MOVES
 - CN-NAV-INHERIT-PARENT
+- CN-NAV-SELECT-BY-NAME

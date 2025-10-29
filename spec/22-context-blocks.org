@@ -1,0 +1,129 @@
+Title: Context Navigator — 22 Context Blocks (Org import/export)
+Status: Normative
+Version: 1.0
+
+§22.1 Block grammar and purpose (CN-CTXBLK-GRAMMAR)
+- Org block name: “context”.
+  - Syntax (без параметров):
+    #+begin_context
+     <ITEM-SPEC-1>
+     <ITEM-SPEC-2>
+     …
+    #+end_context
+- Строки — спецификации элементов; пустые строки и строки, начинающиеся с “#”, игнорируются.
+- Допустимые формы строк (смешанный формат, можно комбинировать):
+  - Абсолютные пути:
+    - “/abs/path.ext” или “~/path.ext” → элемент-файл.
+  - Относительные пути:
+    - “a/b.txt”, “./a/b.txt”, “../a/b.txt” → разрешаются относительно корня текущего проекта (§06); становятся элементами-файлами.
+  - Префиксы (стабильные ключи):
+    - file:<PATH> → элемент-файл
+    - sel:<PATH>:BEG-END → элемент-выделение (selection)
+    - buf:<BUFFER-NAME> или buf:<BUFFER-NAME>:<PATH> → элемент-буфер; при наличии PATH можно привязать к файлу
+    - Везде <PATH> может быть абсолютным или относительным; относительные пути разрешаются относительно корня проекта и нормализуются в абсолютные.
+- Нормализация и валидация:
+  - Пути раскрываются и нормализуются в абсолютные (expand-file-name) (CN-PERSIST-ABS).
+  - Фильтры файлов (§13.2): только обычные файлы; пропускать симлинки; ограничение по размеру.
+  - Допустимы TRAMP/remote пути; политика — §19.3 и §20.
+  - Дедупликация по стабильному ключу (§04.2); при слиянии действует “last wins” (§04.3).
+
+§22.1.1 Пример (информативно)
+#+begin_context
+ /home/az/p1.txt
+ src/main.c
+ sel:docs/guide.org:120-340
+ buf:*scratch*
+ buf:notes.org:notes/notes.org
+ file:/home/az/README.md
+#+end_context
+
+§22.2 Insert command [C-c ni] (CN-CTXBLK-INSERT)
+- Команда: context-navigator-context-block-insert
+- Поведение (без параметров и префиксов):
+  - Вставляет в точку контекст-блок со всеми ВКЛЮЧЕННЫМИ элементами текущей группы в смешанном формате:
+    - Файлы → по одной строке с абсолютным путём.
+    - Выделения → sel:<ABS>:BEG-END (ABS — абсолютный путь).
+    - Буферы → buf:<BUFFER-NAME>[:<ABS>] — если буфер посещает файл, ABS добавляется.
+  - Порядок (рекомендованный): сначала файлы (отсортированы по relpath естественным образом; §08.2.1), затем выделения, затем буферы.
+- Без “форматов” и “включений”: дополнительные параметры у блока не используются и не генерируются.
+- Безопасность/производительность:
+  - Команда только читает текущую модель/состояние; тяжёлого IO не выполняет.
+  - Ошибки перехватываются; сообщения через UI/logger (§18).
+
+§22.3 Parse and resolve (CN-CTXBLK-PARSE, CN-CTXBLK-RESOLVE)
+- Parser:
+  - Обнаружение блока:
+    - Использовать org-element-context для поиска блока с именем “context” (регистронезависимо; допускается BEGIN_CONTEXT).
+    - Экспорт ДОЛЖЕН генерировать блок без параметров; при импорте любые параметры, если встречаются, ИГНОРИРУЮТСЯ.
+  - Не в блоке:
+    - Если точка не внутри блока, команды применения обязаны вывести i18n-сообщение (:ctxblk-not-in-block) и ничего не делать.
+  - Разбор строк:
+    - Читать тело блока; каждую непустую и некомментную строку нормализовать в кандидат согласно §22.1 (поддерживаются смешанные формы).
+- Resolver:
+  - Файлы: принимать только существующие обычные файлы; применять лимит размера; считать :skipped-too-big и :skipped-nonregular (§13.2).
+  - Выделения: требовать существующий путь; границы — целые; последующее “clamp” при редактировании (§12.5).
+  - Буферы: принимать только живые буферы при buf:NAME; при buf:NAME:PATH и не-живом NAME МОЖНО деградировать до элемента-файла (PATH).
+  - Относительные пути во всех префиксах (file:/sel:/buf:…:PATH) разрешаются относительно корня проекта, затем нормализуются в абсолютные.
+  - Дедуп по стабильному ключу; вернуть plist:
+    {:files L :selections L :buffers L
+     :skipped-too-big N :skipped-nonregular N :remote N
+     :total-lines M}
+- Limits:
+  - Применять лимиты добавления путей и подтверждение для remote из §13.5/§13.11 к суммарному набору.
+
+§22.4 Apply commands inside a block (CN-CTXBLK-ADD, CN-CTXBLK-REPLACE)
+- Add (C-c na): context-navigator-context-block-apply-add
+  - Preconditions: point inside a context block; otherwise show i18n’ed info.
+  - Resolve items (§22.3), then merge into current group using CN-ADD-DEDUP (§13.5).
+  - Respect TRAMP confirmation and path-add-limit (§13.5, §13.11).
+  - UI feedback: “added N” where N = new + re-enabled (§13.6).
+  - GPTel: enqueue only new/re-enabled items for batched apply when push→gptel is ON (§13.7).
+- Replace (C-c nr): context-navigator-context-block-apply-replace
+  - Preconditions: as above.
+  - Resolve items (§22.3), then REPLACE current group’s items with the resolved set:
+    - Take undo snapshot before replace (Core §02.2).
+    - Install items via context-navigator-set-items; autosave if changed (§02.3).
+    - GPTel apply follows §02.8/§07 (single-group apply; MG semantics unchanged).
+  - UI feedback: show counts {:enabled . :total} before/after optional.
+
+§22.5 i18n, keys, and which-key (CN-CTXBLK-I18N, CN-CTXBLK-KEYS)
+- i18n:
+  - All messages and which-key labels pass through i18n (§16); suggested keys:
+    - :ctxblk-insert, :ctxblk-add, :ctxblk-replace
+    - :ctxblk-not-in-block, :ctxblk-parse-error, :ctxblk-remote-confirm, :ctxblk-summary
+- Keys:
+  - Included in keyspec (§15.1) with default global prefix “C-c n” (§15.4):
+    - C-c n i → context-navigator-context-block-insert (:desc-key :ctxblk-insert)
+    - C-c n a → context-navigator-context-block-apply-add (:desc-key :ctxblk-add)
+    - C-c n r → context-navigator-context-block-apply-replace (:desc-key :ctxblk-replace)
+  - Commands are safe to invoke in any buffer; they act only when a context block is present (for apply).
+  - which-key labels come from i18n (:desc-key).
+
+§22.6 Edge cases, TRAMP, and tests (CN-CTXBLK-EDGE)
+- Remote/TRAMP:
+  - Count remote paths; ask confirmation before proceeding when any are present (§13.11, §19.3, §20.2).
+- Nonexistent or unreadable files:
+  - Treated as unresolved; ignored with concise log (§21.6).
+- MG:
+  - Operations target the current group’s model; MG selection state is unchanged.
+- Tests (traceability):
+  - Insert default vs keys mode; parsing bare paths vs stable keys; selections and buffer downgrades; remote confirm; path-add-limit; dedup/merge vs replace; GPTel events sequencing.
+  - File: test/context-navigator-context-blocks-test.el
+
+References
+- Model/keys: §04
+- Core/state, undo/autosave/apply: §02
+- Events/debounce: §03
+- Add filters/limits/merge/apply: §13
+- Multifile selections (clamping/editing): §12
+- Keys/i18n: §15/§16
+- Icons/log/logger: §17/§18
+- Performance/TRAMP/config: §19/§20
+- Edge cases: §21
+
+Contracts (IDs)
+- CN-CTXBLK-GRAMMAR
+- CN-CTXBLK-INSERT
+- CN-CTXBLK-PARSE, CN-CTXBLK-RESOLVE
+- CN-CTXBLK-ADD, CN-CTXBLK-REPLACE
+- CN-CTXBLK-I18N, CN-CTXBLK-EDGE

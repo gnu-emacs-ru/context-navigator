@@ -1463,6 +1463,7 @@ Also reload the currently active group from disk (no clearing)."
                   context-navigator-render
                   context-navigator-icons
                   context-navigator-i18n
+                  context-navigator-context-blocks
                   context-navigator-view-modeline
                   context-navigator-add-paths
                   context-navigator-which-key

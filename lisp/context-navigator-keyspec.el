@@ -50,6 +50,13 @@
          :keys ("f") :contexts (global) :section act :desc-key :add-from-minibuf)
     (:id add-from-text :cmd context-navigator-add-from-text
          :keys ("t") :contexts (global) :section act :desc-key :add-from-text)
+    ;; Context blocks (Org)
+    (:id ctxblk-insert :cmd context-navigator-context-block-insert
+         :keys ("C-c n i") :contexts (global) :section act :desc-key :ctxblk-insert)
+    (:id ctxblk-add :cmd context-navigator-context-block-apply-add
+         :keys ("C-c n a") :contexts (global) :section act :desc-key :ctxblk-add)
+    (:id ctxblk-replace :cmd context-navigator-context-block-apply-replace
+         :keys ("C-c n r") :contexts (global) :section act :desc-key :ctxblk-replace)
     (:id select-by-name :cmd context-navigator-select-by-name
          :keys ("b") :contexts (global) :section act :desc-key :select-by-name)
     (:id multifile-open :cmd context-navigator-multifile-open

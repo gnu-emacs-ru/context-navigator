@@ -1,0 +1,50 @@
+Title: Context Navigator — 08.10 Title Providers (header-line, icons, predictive lamp)
+Status: Normative
+Version: 1.0
+
+§08.10.1 Purpose and placement (CN-TITLE-PROV)
+- The Navigator shows a compact title in the header-line:
+  - Items mode: “[<project> : <group>]” when a group is active; otherwise “[<project>]”.
+  - Groups mode: “[<project>]” only.
+- The title is a pure string with text-properties; it is clickable (mouse/TAB/RET) to toggle sidebar collapse.
+- Left padding is controlled by defcustom context-navigator-title-left-padding.
+
+§08.10.2 Icons and alignment (CN-TITLE-ICONS)
+- Icons are optional and come from §17 (all-the-icons when available).
+  - Project icon (layers) and Group icon (folder) use slightly reduced height and ‘display (raise …)’ to align to the baseline.
+  - Fallback emojis or plain text are used when icons are unavailable or disabled (TRAMP/TTY policy).
+- The lamp (state indicator) is small and baseline-aligned as well.
+
+§08.10.3 Predictive indicator in title (CN-TITLE-INDICATOR)
+- The lamp reflects predicted presence state computed from the current model only (no IO):
+  - absent: total=0 OR enabled=0
+  - ok: enabled=total (>0)
+  - mismatch: 0<enabled<total
+- Colors and glyphs:
+  - ok → green ●; mismatch → yellow ◐; absent → gray ○
+  - When §17 icons are available, an icon string may be used instead.
+- In MG:
+  - Items view still shows the aggregate lamp from the current group’s model.
+  - Per-item indicators remain OFF in items view (see §08.1.1); group selection lamps are in §11.
+
+§08.10.4 Interactivity and i18n (CN-TITLE-I18N)
+- The whole title segment is interactive:
+  - mouse-1, TAB/Shift-TAB, and RET toggle collapse/expand of the sidebar content.
+- Help-echo text and any visible strings must pass through i18n (§16).
+
+§08.10.5 Performance and safety
+- The provider must never block; compute title from the core state only (§02).
+- Soft refreshes are preferred; full rerenders happen per render-key rules (§08.1.3).
+
+References
+- View overview: §08
+- Indicators: §08.5
+- Icons: §17
+- i18n: §16
+- Core state: §02
+
+Contracts (IDs)
+- CN-TITLE-PROV
+- CN-TITLE-ICONS
+- CN-TITLE-INDICATOR
+- CN-TITLE-I18N

@@ -46,6 +46,7 @@ Version: 1.0
       - (:add COUNT)
       - (:remove COUNT)
     - (:on-load) — emitted when GPTel loads; signals that indicators may be stale.
+    - (:cleared) — auxiliary event emitted when the bridge clears context explicitly (equivalent to (:reset 0) for consumers).
   - Noisy sources (variable watchers) MUST be ignored by indicator handlers (see §08.5).
 
 §03.3 Debouncer

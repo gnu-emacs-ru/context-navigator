@@ -27,6 +27,11 @@ Version: 1.0
 §10.5 MG aggregation
 - When MG selection is non-empty, aggregate stats across selected groups (async), reuse cache entries where possible (CN-STATS-MG-AGG).
 
+§10.6 Default visibility (session) (CN-STATS-DEFAULT-VIS)
+- When context-navigator-stats-split-default-visible is non-nil:
+  - On first sidebar open in the session, if the Stats split is not visible, open it automatically.
+  - If the user closes the split, do not force reopen in the same session.
+
 References
 - Events: §03
 - MG semantics: §09
@@ -39,3 +44,4 @@ Contracts (IDs)
 - CN-STATS-REMOTE-LAZY, CN-STATS-REMOTE-POLICY
 - CN-STATS-AUTOFIT, CN-STATS-LIFECYCLE
 - CN-STATS-MG-AGG
+- CN-STATS-DEFAULT-VIS

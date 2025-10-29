@@ -19,6 +19,14 @@ Version: 1.0
 - Safety:
   - Logging must never throw; handlers wrap in ignore-errors.
 
+§18.3 UI utilities (preview, human-size) (CN-UI-PREVIEW, CN-UI-HUMAN-SIZE)
+- Preview buffer helper (CN-UI-PREVIEW):
+  - Display a temporary side-window (bottom), fit-to-buffer height, view-mode.
+  - Return boolean proceed/cancel; never throw; close buffer automatically on exit.
+  - Used by add previews (Dired recursion and mask expansions).
+- Human-readable size (CN-UI-HUMAN-SIZE):
+  - Render sizes like “1.2 MiB” with stable rounding; tests assume EN locale per §16.
+
 References
 - i18n: §16
 - Events: §03
@@ -27,3 +35,5 @@ References
 Contracts (IDs)
 - CN-UI
 - CN-LOG
+- CN-UI-PREVIEW
+- CN-UI-HUMAN-SIZE

@@ -173,6 +173,25 @@
      (be . "Адкрыць буферы (у фоне)")
      (zh . "打开缓冲区（后台）")
      (ja . "バッファを開く（バックグラウンド）"))
+    (:ctxblk-insert
+     (en . "Insert context block")
+     (ru . "Вставить блок контекста"))
+    (:ctxblk-add
+     (en . "Add items from context block")
+     (ru . "Добавить элементы из блока контекста"))
+    (:ctxblk-replace
+     (en . "Replace items from context block")
+     (ru . "Заменить элементы из блока контекста"))
+    (:ctxblk-not-in-block
+     (en . "Point is not inside a context block")
+     (ru . "Курсор вне блока контекста"))
+    (:ctxblk-parse-error
+     (en . "Context block parse error")
+     (ru . "Ошибка разбора блока контекста"))
+    (:ctxblk-summary
+     (en . "Files: %d, Selections: %d, Buffers: %d (skipped: %d)")
+     (ru . "Файлы: %d, Выделения: %d, Буферы: %d (пропущено: %d)"))
+
     (:select-by-name
      (en . "Select by name")
      (ru . "Выбрать по имени"))

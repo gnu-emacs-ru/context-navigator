@@ -34,6 +34,14 @@ Version: 1.0
 - Emacs version:
   - Avoid APIs not present in 29.1 unless optionally guarded.
 
+§20.4 Compatibility shims (CN-COMPAT-COPY-STRUCT, CN-COMPAT-SURFACE)
+- Provide minimal fallbacks for missing APIs (e.g., cl-copy-struct):
+  - For known structs (context-navigator-state), return shallow copies using project-defined helpers.
+  - Vectors → copy-sequence; generic → copy-tree as best-effort.
+- Surface:
+  - Shims are loaded early by modules that depend on them and remain optional.
+  - Tests may validate the presence of aliases; behavior MUST be exception-safe.
+
 References
 - Core: §02
 - View: §08
@@ -46,3 +54,5 @@ Contracts (IDs)
 - CN-CONF-CATS
 - CN-CONF-SEM
 - CN-CONF-COMP
+- CN-COMPAT-COPY-STRUCT
+- CN-COMPAT-SURFACE

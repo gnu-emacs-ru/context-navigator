@@ -1,0 +1,30 @@
+Title: Context Navigator — 11.4 Splits Refit Utility (shared height policies)
+Status: Normative
+Version: 1.0
+
+§11.4.1 Purpose
+- Provide a shared, minimal utility to refit auxiliary splits (Stats/Groups) consistently, avoiding duplication across modules.
+
+§11.4.2 Contract (CN-SPLIT-REFIT)
+- Refit triggers:
+  - window-size-change events for the Navigator window
+  - explicit refit requests from Stats/Groups split modules
+- Behavior:
+  - Target height: at most 50% of the Navigator sidebar’s current height (configurable in future).
+  - Respect manual resizes: once the user has manually resized the split, keep that height until a layout change requires re-fit.
+  - No-op when the split buffer/window is not visible.
+- Safety:
+  - Must not signal errors; be idempotent and cheap.
+  - Never create or delete windows on its own; only adjust size of an existing split window.
+
+§11.4.3 Usage
+- Stats split (§10.4) and Groups split (§11.1/§11.3) call into this utility to enforce height policies.
+- The code lives in context-navigator-splits-refit.el.
+
+References
+- Stats split: §10
+- Groups split: §11
+- View overview and side-window parameters: §08
+
+Contracts (IDs)
+- CN-SPLIT-REFIT

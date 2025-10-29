@@ -1,0 +1,25 @@
+Title: Context Navigator — 08.11 Window Safety (delete-other-windows remap)
+Status: Normative
+Version: 1.0
+
+§08.11.1 Rationale
+- Prevent a Navigator side-window from becoming the only window after delete-other-windows, preserving the user’s layout.
+
+§08.11.2 Contract (CN-DEL-OTHER-WIN)
+- When a Context Navigator sidebar window is present on the current frame:
+  - Close all windows showing the Navigator sidebar buffer (windows with parameter 'context-navigator-view = 'sidebar) first.
+  - Then invoke the standard delete-other-windows.
+- In buffer-mode, only windows marked with 'context-navigator-view = 'buffer are considered Navigator windows.
+- When no Navigator windows are present, behave exactly like delete-other-windows.
+
+§08.11.3 Scope
+- The remap MUST be present in:
+  - context-navigator-mode-map (global mode) to guard global behavior.
+  - context-navigator-view-mode-map (sidebar major mode) to guard sidebar-local behavior.
+
+References
+- Core UI helpers and mode maps: §02.4, §08.9
+- View overview and window parameters: §08
+
+Contracts (IDs)
+- CN-DEL-OTHER-WIN

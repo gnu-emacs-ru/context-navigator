@@ -16,7 +16,7 @@ Version: 1.0
 §08.2 Render flow (high-level)
 - Events:
   - Subscribe to :model-refreshed, :context-load-(start|step|done), :project-switch, :group-switch-(start|done), and :gptel-change (indicators).
-- Render-key (CN-RENDER-KEY; §08.6 in detail):
+- Render-key (CN-RENDER-KEY; §08.1.3 in detail):
   - Composite fingerprint to skip full renders when nothing relevant changed.
 - Preloader:
   - During loading-p or when :context-load-step is observed, render a lightweight centered spinner line (no icons, no sorting).

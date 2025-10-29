@@ -29,7 +29,8 @@ Version: 1.0
 - lisp/context-navigator-stats*.el → §10
 - lisp/context-navigator-add*.el → §13.*
 - lisp/context-navigator-razor.el → §14
-- lisp/context-navigator-keyspec.el, which-key → §15
+- lisp/context-navigator-context-blocks.el → §22
+- lisp/context-navigator-keyspec.el, context-navigator-transient*.el, which-key → §15
 - lisp/context-navigator-i18n.el → §16
 - lisp/context-navigator-icons.el → §17
 - lisp/context-navigator-log.el → §18

@@ -33,8 +33,22 @@ Version: 1.0
   - MG gate state (auto-push disabled) must be surfaced with a hint (§02.9, §08.4).
 - Placement:
   - Use posframe/window when available; fallback to help buffer.
+- Builder details (CN-TRANSIENT-BUILD):
+  - Menu items are synthesized from keyspec sections + contextual visibility/enabled predicates.
+  - Regeneration is idempotent: re-applying must not duplicate entries even on repeated calls.
+  - Watch for keyspec, icon availability, and flag toggles to rebuild on demand.
+- TRAMP-aware availability (CN-TRANSIENT-TRAMP):
+  - On TRAMP roots, actions that trigger heavy IO may be hidden or labeled with warnings in help-echo, following §19.3 and §20.
 
-§15.4 Stability and tests
+§15.4 Global prefix key (CN-KEY-GLOBAL)
+- A customizable global prefix key opens the Navigator menu (default “C-c n”):
+  - defcustom context-navigator-global-key: string key sequence or nil (disabled).
+  - Applied to both global-map and context-navigator-mode-map idempotently.
+  - A variable watcher keeps the live binding in sync when the value changes.
+- Safety:
+  - Do not shadow critical default bindings; failures are safe and logged.
+
+§15.5 Stability and tests
 - Stable IDs and :desc-key ensure i18n labels remain consistent in tests (EN locale).
 - Keymaps should remain minimal; most bindings come from keyspec.
 - Changes to default keys require spec update and test refresh.
@@ -47,4 +61,5 @@ References
 Contracts (IDs)
 - CN-KEYSPEC
 - CN-KEYS-APPLY
-- CN-TRANSIENT
+- CN-TRANSIENT, CN-TRANSIENT-BUILD, CN-TRANSIENT-TRAMP
+- CN-KEY-GLOBAL

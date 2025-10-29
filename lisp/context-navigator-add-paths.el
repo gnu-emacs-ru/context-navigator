@@ -1046,7 +1046,15 @@ Heuristic v1:
       (string-match-p "/\\." pattern)))
 
 (defun context-navigator--collect-candidates (base-pl)
-  "Collect absolute file candidates for BASE-PL scan-root quickly."
+  "Collect absolute file candidates for BASE-PL scan-root quickly.
+
+Strategy:
+- Prefer project index when available (fast), filtered to scan-root prefix.
+- Otherwise, perform a safe recursive traversal from SCAN-ROOT (dotdirs/custom
+  exclusions, symlinked dirs skipped), regardless of
+  `context-navigator-path-add-fallback-enabled' (mask expansion needs real FS).
+- On TRAMP roots, return empty (remote expansion is gated elsewhere by
+  `context-navigator-mask-enable-remote')."
   (let* ((scan-root (plist-get base-pl :scan-root))
          (base-root (plist-get base-pl :base-root))
          (base (plist-get base-pl :base))
@@ -1062,12 +1070,13 @@ Heuristic v1:
      ;; Prefer project index (fast), then filter by scan-root prefix
      ((and (listp idx) (> (length idx) 0))
       (cl-remove-if-not in-scan-p idx))
-     ;; No project detected -> do not scan at all
-     ((eq base 'project)
+     ;; Remote roots are not expanded here (caller handles warning/deny)
+     (remote
       '())
-     ;; Fallback: recursive scan from scan-root with exclusions (dotdirs and custom)
+     ;; Fallback: recursive scan from scan-root with exclusions (force-enabled)
      (t
-      (ignore-errors (context-navigator-path-add--project-files-fallback scan-root))))))
+      (let ((context-navigator-path-add-fallback-enabled t))
+        (ignore-errors (context-navigator-path-add--project-files-fallback scan-root)))))))
 
 (defun context-navigator--filter-matches (files rx base-pl)
   "Return subset of FILES whose relative path to SCAN-ROOT matches RX.
