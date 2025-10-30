@@ -52,11 +52,11 @@
          :keys ("t") :contexts (global) :section act :desc-key :add-from-text)
     ;; Context blocks (Org)
     (:id ctxblk-insert :cmd context-navigator-context-block-insert
-         :keys ("C-c n i") :contexts (global) :section act :desc-key :ctxblk-insert)
+         :keys ("i") :contexts (global) :section act :desc-key :ctxblk-insert)
     (:id ctxblk-add :cmd context-navigator-context-block-apply-add
-         :keys ("C-c n a") :contexts (global) :section act :desc-key :ctxblk-add)
+         :keys ("M-a") :contexts (global) :section act :desc-key :ctxblk-add)
     (:id ctxblk-replace :cmd context-navigator-context-block-apply-replace
-         :keys ("C-c n r") :contexts (global) :section act :desc-key :ctxblk-replace)
+         :keys ("r") :contexts (global) :section act :desc-key :ctxblk-replace)
     (:id select-by-name :cmd context-navigator-select-by-name
          :keys ("b") :contexts (global) :section act :desc-key :select-by-name)
     (:id multifile-open :cmd context-navigator-multifile-open
@@ -79,15 +79,15 @@
 
     ;; Logs
     (:id logs-toggle :cmd context-navigator-log-toggle
-         :keys ("D") :contexts (global) :section logs :desc-key :tr-logs-toggle)
+         :keys ("L L") :contexts (global) :section logs :desc-key :tr-logs-toggle)
     (:id logs-open :cmd context-navigator-log-open
-         :keys ("L") :contexts (global) :section logs :desc-key :tr-logs-open)
+         :keys ("L O") :contexts (global) :section logs :desc-key :tr-logs-open)
     (:id logs-clear :cmd context-navigator-log-clear
-         :keys ("K") :contexts (global) :section logs :desc-key :tr-logs-clear)
+         :keys ("L D") :contexts (global) :section logs :desc-key :tr-logs-clear)
     (:id logs-set-level :cmd context-navigator-log-set-level
-         :keys ("=") :contexts (global) :section logs :desc-key :tr-logs-set-level)
+         :keys ("L S") :contexts (global) :section logs :desc-key :tr-logs-set-level)
     (:id logs-toggle-file :cmd context-navigator-log-toggle-file-persistence
-         :keys ("F") :contexts (global) :section logs :desc-key :tr-logs-toggle-file)
+         :keys ("L F") :contexts (global) :section logs :desc-key :tr-logs-toggle-file)
 
     ;; Navigate (items/groups)
     (:id next :cmd context-navigator-view-next-item
@@ -150,9 +150,9 @@
     (:id close-buffers :cmd context-navigator-view-close-all-buffers
          :keys ("c") :contexts (items global) :section act :desc-key :close-buffers)
     (:id clear-group :cmd context-navigator-view-clear-group
-         :keys ("x") :contexts (items global) :section act :desc-key :help-clear-group)
+         :keys ("D") :contexts (items global) :section act :desc-key :help-clear-group)
     (:id clear-gptel :cmd context-navigator-view-clear-gptel
-         :keys ("X") :contexts (items global) :section act :desc-key :help-clear-gptel)
+         :keys ("K") :contexts (items global) :section act :desc-key :help-clear-gptel)
 
     ;; Undo/Redo only in items and groups-split
     (:id undo :cmd context-navigator-undo
