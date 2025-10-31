@@ -50,7 +50,7 @@ SIZE is interpreted as:
 - Always select the Navigator window."
   (interactive)
   (let* ((buf (get-buffer-create context-navigator-view--buffer-name))
-         (visible (get-buffer-window buf 0))
+         (visible (get-buffer-window buf nil))
          (placement (if (boundp 'context-navigator-buffer-placement)
                         context-navigator-buffer-placement
                       'reuse-other-window))
@@ -63,7 +63,7 @@ SIZE is interpreted as:
       (pcase placement
         ('reuse-other-window
          (let* ((wins (seq-filter (lambda (w) (and (window-live-p w)
-                                              (not (eq w (selected-window)))))
+                                                   (not (eq w (selected-window)))))
                                   (window-list (selected-frame) 'no-minibuffer)))
                 (w (car wins)))
            (if (window-live-p w)
@@ -119,7 +119,7 @@ Also close any Navigator splits (Groups/Stats) if they are open."
 (defun context-navigator-buffer-toggle ()
   "Toggle Navigator buffer visibility on the current frame."
   (interactive)
-  (if (get-buffer-window context-navigator-view--buffer-name 0)
+  (if (get-buffer-window context-navigator-view--buffer-name nil)
       (context-navigator-buffer-close)
     (context-navigator-buffer-open)))
 

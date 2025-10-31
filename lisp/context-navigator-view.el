@@ -721,7 +721,7 @@ Do not highlight purely decorative separators."
 (defun context-navigator-view-toggle ()
   "Toggle the context-navigator sidebar."
   (interactive)
-  (if (get-buffer-window context-navigator-view--buffer-name t)
+  (if (get-buffer-window context-navigator-view--buffer-name nil)
       (context-navigator-view-close)
     (context-navigator-view-open)))
 
