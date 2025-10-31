@@ -744,6 +744,13 @@ Handles ambiguities/unresolved/limits/remote confirmation. Returns plist result.
 (cl-defun context-navigator-add-from-text ()
   "Extract path-like tokens from region or buffer, preview, and add resolved files to the active group."
   (interactive)
+  ;; If no region and point is inside a context block, apply items from the block (add/merge).
+  (when (and (not (use-region-p))
+             (ignore-errors (require 'context-navigator-context-blocks nil t))
+             (fboundp 'cn-ctxblk--block-text-at-point)
+             (cn-ctxblk--block-text-at-point))
+    (context-navigator-context-block-apply-add)
+    (cl-return-from context-navigator-add-from-text t))
   (let* ((src (if (use-region-p)
                   (buffer-substring-no-properties (region-beginning) (region-end))
                 (buffer-substring-no-properties (point-min) (point-max))))
@@ -1064,8 +1071,8 @@ Strategy:
                    (context-navigator-project-file-index proj-root)))
          (in-scan-p
           (lambda (p) (string-prefix-p
-                       (file-name-as-directory (expand-file-name scan-root))
-                       (expand-file-name p)))))
+                  (file-name-as-directory (expand-file-name scan-root))
+                  (expand-file-name p)))))
     (cond
      ;; Prefer project index (fast), then filter by scan-root prefix
      ((and (listp idx) (> (length idx) 0))

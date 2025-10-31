@@ -21,7 +21,7 @@ Version: 1.0
   - §15 keys/transient/which-key → test/context-navigator-transient-*-test.el, -which-key integration
   - §05 persist loader/saver → test/context-navigator-persist-test.el
   - §02 core API/state → test/context-navigator-core-*-test.el
-  - §22 context blocks (insert/add/replace) → test/context-navigator-context-blocks-test.el
+  - §22 context blocks (insert/add/replace; add-from-text/universal shortcuts) → test/context-navigator-context-blocks-test.el
 
 §90.3 Test environment (CN-TEST-ENV)
 - Noninteractive EN locale; disable icons on TTY/TRAMP by default.

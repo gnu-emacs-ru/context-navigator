@@ -401,6 +401,12 @@ Behavior:
 TRAMP/remote: show a warning and confirm before proceeding."
   (interactive)
   (cond
+   ;; If no region and point is inside a context block, apply items from the block (add/merge).
+   ((and (not (context-navigator-add--region-active-p))
+         (ignore-errors (require 'context-navigator-context-blocks nil t))
+         (fboundp 'cn-ctxblk--block-text-at-point)
+         (cn-ctxblk--block-text-at-point))
+    (context-navigator-context-block-apply-add))
    ((derived-mode-p 'dired-mode)
     (context-navigator-add--dired-selection))
    ((context-navigator-add--region-active-p)

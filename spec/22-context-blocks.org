@@ -85,6 +85,11 @@ Version: 1.0
     - Install items via context-navigator-set-items; autosave if changed (§02.3).
     - GPTel apply follows §02.8/§07 (single-group apply; MG semantics unchanged).
   - UI feedback: show counts {:enabled . :total} before/after optional.
+- Convenience integration:
+  - When the point is inside a context block and no region is active, the following commands MUST behave exactly like “Add” above:
+    - context-navigator-add-from-text (§13.1)
+    - context-navigator-add-universal (§13)
+  - Outside a block, or when a region is active, these commands preserve their normal behavior.
 
 §22.5 i18n, keys, and which-key (CN-CTXBLK-I18N, CN-CTXBLK-KEYS)
 - i18n:

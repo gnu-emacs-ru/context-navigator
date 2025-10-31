@@ -73,6 +73,12 @@ Version: 1.0
   - For adds, enqueue only new/re-enabled items for background batch apply (ignore visible-window requirement).
   - Publish :gptel-change :batch-done after full apply paths to refresh indicators.
 
+§13.9 Context block integration (CN-TEXT-CTXBLK)
+- Convenience: When invoked with no active region and the point is inside an Org context block (# +begin_context … # +end_context), context-navigator-add-from-text MUST behave exactly like context-navigator-context-block-apply-add (§22.4):
+  - Parse and resolve items from the block (§22.3), apply file filters/limits and TRAMP confirmation as in §13.5.
+  - Merge into the current group using CN-ADD-DEDUP semantics (§13.5) and enqueue new/re-enabled items for GPTel as in §13.8.
+- Outside a block, or when a region is active, the normal token/minibuffer flow applies unchanged.
+
 References
 - Model/keys: §04
 - Project/root: §06
@@ -89,3 +95,4 @@ Contracts (IDs)
 - CN-TEXT-MINIBUF
 - CN-TEXT-GLOB
 - CN-TEXT-APPLY
+- CN-TEXT-CTXBLK

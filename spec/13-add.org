@@ -39,6 +39,9 @@ Version: 1.0
   - Add current file; if remote, prompt to confirm first; otherwise add (CN-ADD-CURRENT-FILE).
 - Non-file current buffer → Buffer item:
   - Add an item referencing the live buffer (CN-ADD-CURRENT-BUFFER).
+- Context block at point (no region) → Add from block (CN-ADD-CTXBLK):
+  - If the point is inside an Org context block (§22) and no region is active, context-navigator-add-universal MUST behave as context-navigator-context-block-apply-add (§22.4):
+    - Parse/resolve items from the block (§22.3), apply file filters/limits and TRAMP confirmation as in §13.5, then merge (§13.5).
 
 §13.5 Deduplication and merge (CN-ADD-DEDUP)
 - Stable key is the source of truth (§04.2). Merging rules for file items:
@@ -128,3 +131,4 @@ Contracts (IDs)
 - CN-ADD-PREVIEW
 - CN-ADD-REMOTE-CONFIRM
 - CN-ADD-RESULT
+- CN-ADD-CTXBLK
