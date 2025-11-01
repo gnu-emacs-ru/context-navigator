@@ -37,7 +37,20 @@
   "TTL (seconds) for project file index cache."
   :type 'number :group 'context-navigator-path-add)
 
+(defcustom context-navigator-add-from-text-max-bytes 200000
+  "Hard cap on how many bytes to scan when extracting paths from a buffer without an active region."
+  :type 'integer :group 'context-navigator-path-add)
+
+(defcustom context-navigator-add-from-text-max-tokens 400
+  "Maximum number of path-like tokens to collect from text before stopping."
+  :type 'integer :group 'context-navigator-path-add)
+
+(defcustom context-navigator-path-add-preview-max-files 1000
+  "Maximum number of file paths to show in the preview buffer; the rest are summarized."
+  :type 'integer :group 'context-navigator-path-add)
+
 (defcustom context-navigator-path-add-case-sensitive 'on
+
   "Case sensitivity policy for basename matching: auto|on|off."
   :type '(choice (const auto) (const on) (const off))
   :group 'context-navigator-path-add)
@@ -469,6 +482,63 @@ Fallback (when primary found nothing):
         (nreverse (delete-dups acc))))))
 
 ;; -----------------------------------------------------------------------------
+;; Streaming token extraction from buffer region (no full-string copy)
+
+(defun context-navigator-extract-pathlike-tokens-region (beg end)
+  "Efficiently extract path-like tokens scanning the buffer region [BEG,END] directly.
+Respects =context-navigator-add-from-text-max-bytes' and
+=context-navigator-add-from-text-max-tokens' to avoid excessive memory/CPU use on very large inputs."
+  (save-excursion
+    (save-restriction
+      (narrow-to-region beg end)
+      (let* ((scan-end (min (point-max)
+                            (+ (point-min)
+                               (max 0 (or context-navigator-add-from-text-max-bytes 200000)))))
+             (re "\\(?:\"[^\"\n]+\"\\|'[^'\n]+'\\|<[^>\n]+>\\|[~[:alnum:]_.:/\\\\-]+\\)")
+             (acc '())
+             (seen (make-hash-table :test 'equal))
+             (limit (or context-navigator-add-from-text-max-tokens 400)))
+        (goto-char (point-min))
+        (while (and (< (point) scan-end)
+                    (or (null limit) (> limit 0))
+                    (re-search-forward re scan-end t))
+          (let ((m (match-string-no-properties 0)))
+            (when (and (stringp m) (> (length (string-trim m)) 0))
+              (let ((norm (context-navigator-path-add--normalize-token m)))
+                (when (and (stringp norm)
+                           (not (string-empty-p norm))
+                           (context-navigator-path-add--token-acceptable-p norm)
+                           (not (gethash norm seen)))
+                  (puthash norm t seen)
+                  (push norm acc)
+                  (when (integerp limit) (setq limit (1- limit))))))))
+        (let ((res (nreverse acc)))
+          (if (> (length res) 0)
+              res
+            ;; Fallback: dired-like last-field per line within scan window
+            (goto-char (point-min))
+            (let (acc2)
+              (while (< (point) scan-end)
+                (let ((bol (point))
+                      (eol (min (line-end-position) scan-end)))
+                  (let* ((ln (buffer-substring-no-properties bol eol))
+                         (trim (string-trim ln)))
+                    (when (and (stringp trim) (not (string-empty-p trim)))
+                      (let* ((parts (cl-remove-if (lambda (s) (or (null s) (string-empty-p s)))
+                                                  (split-string trim "[ \t]+" t)))
+                             (last (car (last parts))))
+                        (when last
+                          (let ((norm (context-navigator-path-add--normalize-token last)))
+                            (when (and (stringp norm)
+                                       (not (string-empty-p norm))
+                                       (context-navigator-path-add--token-acceptable-p norm)
+                                       (not (gethash norm seen)))
+                              (puthash norm t seen)
+                              (push norm acc2)))))))
+                  (forward-line 1)))
+              (nreverse acc2))))))))
+
+;; -----------------------------------------------------------------------------
 ;; Resolution algorithm
 
 (defun context-navigator-path-add--absolute-p (s)
@@ -751,10 +821,14 @@ Handles ambiguities/unresolved/limits/remote confirmation. Returns plist result.
              (cn-ctxblk--block-text-at-point))
     (context-navigator-context-block-apply-add)
     (cl-return-from context-navigator-add-from-text t))
-  (let* ((src (if (use-region-p)
-                  (buffer-substring-no-properties (region-beginning) (region-end))
-                (buffer-substring-no-properties (point-min) (point-max))))
-         (tokens (context-navigator-extract-pathlike-tokens (or src ""))))
+  (let* ((beg (if (use-region-p) (region-beginning) (point-min)))
+         (end (if (use-region-p) (region-end) (point-max)))
+         (tokens (context-navigator-extract-pathlike-tokens-region beg end)))
+    ;; Inform user when we scanned only a part of a huge buffer (no region case).
+    (when (and (not (use-region-p))
+               (> (- end beg) (or context-navigator-add-from-text-max-bytes 200000)))
+      (message "[context-navigator] Ограничил сканирование первыми %d байт — выделите нужный фрагмент для полной обработки."
+               (or context-navigator-add-from-text-max-bytes 200000)))
     (if (or (null tokens) (= (length tokens) 0))
         (context-navigator-ui-info :text-no-tokens)
       (let* ((root (context-navigator-path-add--project-root))
@@ -1131,8 +1205,12 @@ Respects case sensitivity and dotfiles rule."
         (insert "\n")
         (insert (context-navigator-i18n :preview-files))
         (insert "\n")
-        (dolist (f files)
-          (insert (format "  %s\n" (abbreviate-file-name f))))
+        (let* ((max (max 1 (or context-navigator-path-add-preview-max-files 1000)))
+               (shown (min (length files) max)))
+          (dolist (f (cl-subseq files 0 shown))
+            (insert (format "  %s\n" (abbreviate-file-name f))))
+          (when (< shown (length files))
+            (insert (format "  ... (%d more)\n" (- (length files) shown)))))
         (goto-char (point-min))
         (view-mode 1))
       (save-window-excursion
