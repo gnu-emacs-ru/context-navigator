@@ -319,10 +319,93 @@ Replace any existing items that reference the same files. Apply to gptel (batche
 ;; ---------------- Universal add dispatch helpers ----------------
 
 (defun context-navigator-add--region-active-p ()
-  "Return non-nil if there is an active region or a non-point mark."
-  (let ((mk (mark t)))
-    (or (use-region-p)
-        (and (number-or-marker-p mk) (/= (point) mk)))))
+  "Return non-nil only when there is a real, visible active region."
+  (use-region-p))
+
+;; --- Context-aware helpers (selection/file at point) ------------------------
+
+(defun context-navigator-add--find-selection-containing-point ()
+  "Return selection item at point in current buffer, or nil.
+Matches items of type 'selection whose path/buffer corresponds to the current
+buffer and whose [beg,end] range contains point."
+  (let* ((st (ignore-errors (context-navigator--state-get)))
+         (items (and st (context-navigator-state-items st)))
+         (buf (current-buffer))
+         (path (buffer-file-name buf))
+         (pt (point)))
+    (cl-find-if
+     (lambda (it)
+       (and (eq (context-navigator-item-type it) 'selection)
+            (let* ((it-buf (context-navigator-item-buffer it))
+                   (it-path (context-navigator-item-path it))
+                   (beg (context-navigator-item-beg it))
+                   (end (context-navigator-item-end it))
+                   (lo (and (integerp beg) (integerp end) (min beg end)))
+                   (hi (and (integerp beg) (integerp end) (max beg end)))
+                   (same-buf (or (and (buffer-live-p it-buf) (eq it-buf buf))
+                                 (and (stringp it-path) (stringp path)
+                                      (file-equal-p it-path path)))))
+              (and same-buf lo hi (<= lo pt) (<= pt hi)))))
+     (or items '()))))
+
+(defun context-navigator-add--find-file-item-for-current-buffer ()
+  "Return file item for the current buffer if present in the model, or nil."
+  (let* ((st (ignore-errors (context-navigator--state-get)))
+         (idx (and st (context-navigator-state-index st)))
+         (path (buffer-file-name (current-buffer))))
+    (when (and (hash-table-p idx) (stringp path))
+      (let* ((key (context-navigator-model-item-key
+                   (context-navigator-item-create :type 'file
+                                                  :name (file-name-nondirectory path)
+                                                  :path (expand-file-name path))))
+             (it (gethash key idx)))
+        (and (context-navigator-item-p it)
+             (eq (context-navigator-item-type it) 'file)
+             it)))))
+
+;;;###autoload
+(defun context-navigator-remove-here ()
+  "Remove the selection/file at point from the context.
+Priority:
+- If point is inside an added selection, remove that selection item.
+- Otherwise, if current buffer's file is in the context, remove that file item."
+  (interactive)
+  (let* ((it (or (context-navigator-add--find-selection-containing-point)
+                 (context-navigator-add--find-file-item-for-current-buffer))))
+    (if (not (context-navigator-item-p it))
+        (ignore-errors (context-navigator-ui-info :nothing-to-delete))
+      ;; Push snapshot for Undo/Redo before changing the model
+      (when (fboundp 'context-navigator-snapshot-push)
+        (ignore-errors (context-navigator-snapshot-push)))
+      (let* ((key (context-navigator-model-item-key it)))
+        (ignore-errors (context-navigator-remove-item-by-key key))
+        (ignore-errors
+          (context-navigator-ui-info :deleted-from-model
+                                     (or (context-navigator-item-name it) key)))
+        ;; Soft UI refresh (if sidebar is open)
+        (when (fboundp 'context-navigator-view--render-if-visible)
+          (context-navigator-view--render-if-visible))))))
+
+;;;###autoload
+(defun context-navigator-disable-here ()
+  "Disable the selection/file at point in the context (keep it listed but off).
+Priority:
+- If point is inside an added selection, disable that selection item.
+- Otherwise, if current buffer's file is in the context, disable that file item."
+  (interactive)
+  (let* ((it (or (context-navigator-add--find-selection-containing-point)
+                 (context-navigator-add--find-file-item-for-current-buffer))))
+    (if (not (context-navigator-item-p it))
+        (ignore-errors (context-navigator-ui-info :no-items-in-context))
+      ;; Push snapshot for Undo/Redo before changing the model
+      (when (fboundp 'context-navigator-snapshot-push)
+        (ignore-errors (context-navigator-snapshot-push)))
+      (let* ((key (context-navigator-model-item-key it)))
+        (ignore-errors (context-navigator-toggle-item key nil))
+        ;; Soft UI refresh (if sidebar is open)
+        (when (fboundp 'context-navigator-view--render-if-visible)
+          (context-navigator-view--render-if-visible))))))
+
 
 (defun context-navigator-add--dired-selection ()
   "Handle Dired selection for universal add."
@@ -344,29 +427,26 @@ Replace any existing items that reference the same files. Apply to gptel (batche
           (context-navigator-add-files files))))))
 
 (defun context-navigator-add--add-selection-from-region ()
-  "Create and add a selection item from the active region/mark."
-  (let* ((buf (current-buffer))
-         (p   (buffer-file-name buf))
-         (mk  (mark t))
-         (beg (if (use-region-p)
-                  (region-beginning)
-                (min (point) (or (and (number-or-marker-p mk) (prefix-numeric-value mk)) (point)))))
-         (end (if (use-region-p)
-                  (region-end)
-                (max (point) (or (and (number-or-marker-p mk) (prefix-numeric-value mk)) (point)))))
-         (nm (if p
-                 (format "%s:%s-%s" (file-name-nondirectory p) beg end)
-               (format "%s:%s-%s" (buffer-name buf) beg end)))
-         (sel (context-navigator-item-create
-               :type 'selection :name nm
-               :path p :buffer buf :beg beg :end end :enabled t)))
-    (ignore-errors (context-navigator-add-item sel))
-    ;; Fully clear region/mark so the next call won't treat a stale mark as selection
-    (ignore-errors (deactivate-mark t))
-    (ignore-errors (set-marker (mark-marker) nil (current-buffer)))
-    ;; Apply only the selection (tests expect selection to be primary)
-    (context-navigator-add--apply-items-batched (list sel))
-    (context-navigator-ui-info :added-selection)))
+  "Create and add a selection item from the active region."
+  (if (not (use-region-p))
+      (context-navigator-ui-info :no-active-region)
+    (let* ((buf (current-buffer))
+           (p   (buffer-file-name buf))
+           (beg (region-beginning))
+           (end (region-end))
+           (nm (if p
+                   (format "%s:%s-%s" (file-name-nondirectory p) beg end)
+                 (format "%s:%s-%s" (buffer-name buf) beg end)))
+           (sel (context-navigator-item-create
+                 :type 'selection :name nm
+                 :path p :buffer buf :beg beg :end end :enabled t)))
+      (ignore-errors (context-navigator-add-item sel))
+      ;; Fully clear region so the next call won't treat a stale mark as selection
+      (ignore-errors (deactivate-mark t))
+      (ignore-errors (set-marker (mark-marker) nil (current-buffer)))
+      ;; Apply only the selection (tests expect selection to be primary)
+      (context-navigator-add--apply-items-batched (list sel))
+      (context-navigator-ui-info :added-selection))))
 
 (defun context-navigator-add--add-current-file ()
   "Add the current file-backed buffer as a file item."
