@@ -29,7 +29,7 @@
   "Settings for adding files from names/paths."
   :group 'context-navigator)
 
-(defcustom context-navigator-path-add-limit 70
+(defcustom context-navigator-path-add-limit 120
   "Maximum number of files to add in a single operation."
   :type 'integer :group 'context-navigator-path-add)
 
@@ -1145,8 +1145,8 @@ Strategy:
                    (context-navigator-project-file-index proj-root)))
          (in-scan-p
           (lambda (p) (string-prefix-p
-                  (file-name-as-directory (expand-file-name scan-root))
-                  (expand-file-name p)))))
+                       (file-name-as-directory (expand-file-name scan-root))
+                       (expand-file-name p)))))
     (cond
      ;; Prefer project index (fast), then filter by scan-root prefix
      ((and (listp idx) (> (length idx) 0))
