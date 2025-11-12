@@ -76,7 +76,7 @@ Version: 1.0
 
 §13.8 Selection item: details (CN-ADD-SELECTION)
 - Source:
-  - Build from active region or mark boundaries when the region is not active (clamped).
+  - Build only from a real, visible active region; when no active region is present, selection add MUST NOT occur (add-universal falls back to current file flow).
 - Item fields:
   - type='selection; name “<basename-or-buffer>:<beg>-<end>”; path=buffer-file-name or nil; buffer=live buffer (when available); beg/end integers.
 - GPTel:
