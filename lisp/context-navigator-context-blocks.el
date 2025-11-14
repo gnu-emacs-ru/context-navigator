@@ -69,6 +69,37 @@
               (setq e (match-beginning 0)))))
         (and (integerp b) (integerp e) (cons b e)))))))
 
+(defun cn-ctxblk--block-range ()
+  "Return cons of (BEGIN . END) covering the entire context block at point, or nil."
+  (save-excursion
+    (cond
+     (context-navigator-context-blocks--use-org
+      (condition-case _err
+          (let* ((elem (org-element-context))
+                 (blk  (cl-loop for e = elem then (org-element-property :parent e)
+                                while e
+                                when (eq (car e) 'special-block)
+                                return e))
+                 (type (and blk (org-element-property :type blk))))
+            (when (and (stringp type) (string-match-p "\\`context\\'" (downcase type)))
+              (let ((b (org-element-property :begin blk))
+                    (e (org-element-property :end blk)))
+                (and (integerp b) (integerp e) (cons b e)))))
+        (error nil)))
+     (t
+      ;; Regex fallback: search nearest begin/end around point (case-insensitive)
+      (let (b e)
+        (save-excursion
+          (when (re-search-backward "^[ \t]*#\\+begin_context\\b" nil t)
+            (setq b (match-beginning 0))
+            (when (re-search-forward "^[ \t]*#\\+end_context\\b" nil t)
+              (setq e (line-end-position))
+              (when (and (integerp e)
+                         (< e (point-max))
+                         (eq (char-after e) ?\n))
+                (setq e (1+ e)))))))
+      (and (integerp b) (integerp e) (cons b e))))))
+
 (defun cn-ctxblk--expand-path (path &optional root)
   "Resolve PATH to an absolute normalized path, using ROOT for relative names."
   (let* ((r (or root (cn-ctxblk--project-root)))
@@ -281,7 +312,13 @@ Files first (sorted by relpath), then selections, then buffers."
          (items (and st (ignore-errors (context-navigator-state-items st))))
          (enabled (cn-ctxblk--enabled-items items))
          (txt (cn-ctxblk--emit-block enabled)))
-    (insert txt)
+    (if-let ((range (cn-ctxblk--block-range)))
+        (let ((start (car range))
+              (end (cdr range)))
+          (delete-region start end)
+          (goto-char start)
+          (insert txt))
+      (insert txt))
     (when (fboundp 'context-navigator-ui-info)
       (context-navigator-ui-info :ctxblk-insert))))
 
