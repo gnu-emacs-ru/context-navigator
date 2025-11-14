@@ -21,7 +21,6 @@
 (require 'context-navigator-log)
 (require 'context-navigator-compat)
 (require 'context-navigator-groups)
-(require 'context-navigator-context-blocks)
 
 ;; Ensure project tracking vars are always bound early (used by hooks during initialization)
 (defvar context-navigator-project--last-root nil)
