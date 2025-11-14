@@ -21,6 +21,7 @@
 (require 'context-navigator-log)
 (require 'context-navigator-compat)
 (require 'context-navigator-groups)
+(require 'context-navigator-context-blocks)
 
 ;; Ensure project tracking vars are always bound early (used by hooks during initialization)
 (defvar context-navigator-project--last-root nil)
@@ -29,8 +30,6 @@
 ;; Ensure event bus vars are bound early to avoid void-variable during partial loads
 (defvar context-navigator--event-subscribers (make-hash-table :test 'eq))
 (defvar context-navigator--debounce-timers nil)
-
-
 
 ;; Forward declaration to avoid load cycle with sidebar/buffer view
 (declare-function context-navigator-view-open "context-navigator-view" ())
