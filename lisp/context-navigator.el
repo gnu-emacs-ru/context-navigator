@@ -135,6 +135,14 @@
 ;;;###autoload
 (autoload 'context-navigator-view-razor-run "context-navigator-view-actions" "Run Occam/razor (LLM) against current org buffer." t)
 
+;;; Context blocks (Org)
+;;;###autoload
+(autoload 'context-navigator-context-block-insert "context-navigator-context-blocks" "Insert a context block representing the current group's enabled items." t)
+;;;###autoload
+(autoload 'context-navigator-context-block-apply-add "context-navigator-context-blocks" "If inside a context block, parse and add items to the current group." t)
+;;;###autoload
+(autoload 'context-navigator-context-block-apply-replace "context-navigator-context-blocks" "If inside a context block, parse and replace items in the current group." t)
+
 ;;; Help / menu
 ;;;###autoload
 (autoload 'context-navigator-view-help "context-navigator-view-help" "Show help for Navigator view." t)
