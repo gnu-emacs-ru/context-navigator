@@ -104,6 +104,48 @@ inherit from a reliable Navigator parent keymap."
   :type '(choice (const auto) (const icons) (const text))
   :group 'context-navigator)
 
+(defcustom context-navigator-view-diagnostics-events
+  '(:model-refreshed :gptel-change :context-load-start :context-load-done
+    :group-switch-start :group-switch-done :groups-list-updated :group-selection-changed)
+  "Events to monitor when diagnostics trace is active."
+  :type '(repeat symbol)
+  :group 'context-navigator)
+
+(defcustom context-navigator-view-diagnostics-args-limit 1
+  "Maximum number of event arguments to record in diagnostics trace.
+Set to 0 or nil to skip capturing arguments (only arity is logged)."
+  :type '(choice (const :tag "Record none" 0)
+                 (const :tag "Record none" nil)
+                 integer)
+  :group 'context-navigator)
+
+(defcustom context-navigator-view-diagnostics-arg-string-limit 160
+  "Maximum number of characters recorded per event argument in diagnostics trace.
+Set to nil to disable truncation."
+  :type '(choice (const :tag "Do not truncate" nil)
+                 integer)
+  :group 'context-navigator)
+
+(defcustom context-navigator-view-diagnostics-trace-max 200
+  "Maximum number of entries kept in diagnostics trace log."
+  :type 'integer
+  :group 'context-navigator)
+
+(defcustom context-navigator-view-diagnostics-include-backtrace nil
+  "When non-nil, capture a trimmed backtrace for each scheduled render in diagnostics trace."
+  :type 'boolean
+  :group 'context-navigator)
+
+(defcustom context-navigator-view-diagnostics-message-events nil
+  "When non-nil, echo tracked events in the minibuffer while diagnostics trace is active."
+  :type 'boolean
+  :group 'context-navigator)
+
+(defcustom context-navigator-view-diagnostics-event-window 1.0
+  "Time window (seconds) to relate a scheduled render to the most recent tracked event."
+  :type 'number
+  :group 'context-navigator)
+
 (defcustom context-navigator-gptel-indicator-poll-interval 0
   "Polling interval (seconds) to refresh gptel indicators while the sidebar is visible.
 
@@ -208,6 +250,12 @@ Set to 0 or nil to disable polling (event-based refresh still works)."
 (autoload 'context-navigator-view-group-toggle-select "context-navigator-view-dispatch" nil t)
 (autoload 'context-navigator-view-push-now-dispatch   "context-navigator-view-dispatch" nil t)
 (autoload 'context-navigator-view-stats-toggle "context-navigator-view" nil t)
+
+(defvar context-navigator-view--diag-trace-on nil)
+(defvar context-navigator-view--diag-trace-log nil)
+(defvar context-navigator-view--diag-trace-tokens nil)
+(defvar context-navigator-view--diag-last-event nil)
+(defconst context-navigator-view--diag-trace-buffer "*Context Navigator Render Trace*")
 
 (defvar-local context-navigator-view--subs nil)
 (defvar-local context-navigator-view--header "Context")
@@ -500,6 +548,27 @@ background."
 When ALSO-INVALIDATE is non-nil, reset render and header-line caches to force update.
 When nil, keep caches to minimize flicker — the render will still happen if the
 model generation changed."
+  (when context-navigator-view--diag-trace-on
+    (let* ((now (float-time))
+           (recent (and (plistp context-navigator-view--diag-last-event)
+                        (numberp (plist-get context-navigator-view--diag-last-event :time))
+                        (< (- now (plist-get context-navigator-view--diag-last-event :time))
+                           (max 0.0 (or context-navigator-view-diagnostics-event-window 0.0)))))
+           (payload (list :invalidate also-invalidate
+                          :mode context-navigator-view--mode
+                          :visible (when (get-buffer-window context-navigator-view--buffer-name t) t))))
+      (when recent
+        (setq payload
+              (append payload
+                      (list :after-event (plist-get context-navigator-view--diag-last-event :event)
+                            :dt (- now (plist-get context-navigator-view--diag-last-event :time))
+                            :arity (plist-get context-navigator-view--diag-last-event :arity)))))
+      (when (and context-navigator-view-diagnostics-include-backtrace
+                 (fboundp 'backtrace))
+        (setq payload
+              (append payload
+                      (list :bt (context-navigator-view--diag-backtrace 6)))))
+      (context-navigator-view--diag-log :schedule payload)))
   (let ((buf (get-buffer context-navigator-view--buffer-name)))
     (when (buffer-live-p buf)
       (with-current-buffer buf
