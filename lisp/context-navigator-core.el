@@ -263,6 +263,8 @@ Do not mutate fields in place; use helpers to return a new struct."
   (items nil :documentation "List<context-navigator-item>")
   (index (make-hash-table :test 'equal) :documentation "Key->item")
   (generation 0 :documentation "Monotonic generation number.")
+  (total-count 0 :documentation "Cached total number of items (for cheap header).")
+  (enabled-count 0 :documentation "Cached number of enabled items (for cheap header).")
   (inhibit-refresh nil)
   (inhibit-autosave nil)
   (loading-p nil)
@@ -281,6 +283,8 @@ This avoids depending on cl-copy-struct and keeps copying explicit."
    :items (context-navigator-state-items state)
    :index (context-navigator-state-index state)
    :generation (context-navigator-state-generation state)
+   :total-count (context-navigator-state-total-count state)
+   :enabled-count (context-navigator-state-enabled-count state)
    :inhibit-refresh (context-navigator-state-inhibit-refresh state)
    :inhibit-autosave (context-navigator-state-inhibit-autosave state)
    :loading-p (context-navigator-state-loading-p state)
@@ -437,15 +441,24 @@ This avoids depending on cl-copy-struct and keeps copying explicit."
   (setq context-navigator--state new-state))
 
 (defun context-navigator--state-with-items (state items)
-  "Return new STATE' with ITEMS and recomputed index/generation."
+  "Return new STATE' with ITEMS and recomputed index/generation and cheap counters."
   ;; Keep original order and allow duplicates in ITEMS; index will reflect last-wins semantics.
   (let* ((uni items)
          (idx (context-navigator-model-build-index uni))
-         (new (context-navigator--state-copy state)))
+         (new (context-navigator--state-copy state))
+         (total (length (or uni '())))
+         (enabled 0))
+    ;; Fast enabled count (no closures)
+    (dolist (it (or uni '()))
+      (when (context-navigator-item-enabled it)
+        (setq enabled (1+ enabled))))
     (setf (context-navigator-state-items new) uni)
     (setf (context-navigator-state-index new) idx)
     (setf (context-navigator-state-generation new)
           (1+ (context-navigator-state-generation new)))
+    ;; Cache counts for title/header without rescanning on redisplay
+    (setf (context-navigator-state-total-count new) total)
+    (setf (context-navigator-state-enabled-count new) enabled)
     new))
 
 ;;;###autoload

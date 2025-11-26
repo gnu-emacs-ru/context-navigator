@@ -19,7 +19,6 @@
 (require 'context-navigator-i18n)
 (require 'context-navigator-util)
 (require 'color)
-(require 'color)
 
 ;; Cross-module helpers (optional; guard with fboundp at callsites)
 (declare-function context-navigator-groups-split--visible-window "context-navigator-groups-split" ())
@@ -87,16 +86,6 @@ the cached aggregate without re-reading group files."
   "Face for percentages in the Types table."
   :group 'context-navigator-stats-split)
 
-;; Faces for Types table formatting (pastel tones)
-(defface context-navigator-stats-types-count-face
-  '((t :foreground "SteelBlue3"))
-  "Face for counts in the Types table."
-  :group 'context-navigator-stats-split)
-
-(defface context-navigator-stats-types-percent-face
-  '((t :foreground "SeaGreen4"))
-  "Face for percentages in the Types table."
-  :group 'context-navigator-stats-split)
 
 ;; Tabs: tab-line integration for Stats split
 (defvar context-navigator-stats-split--last-active-tab 'summary

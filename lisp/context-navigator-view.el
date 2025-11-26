@@ -106,7 +106,7 @@ inherit from a reliable Navigator parent keymap."
 
 (defcustom context-navigator-view-diagnostics-events
   '(:model-refreshed :gptel-change :context-load-start :context-load-done
-    :group-switch-start :group-switch-done :groups-list-updated :group-selection-changed)
+                     :group-switch-start :group-switch-done :groups-list-updated :group-selection-changed)
   "Events to monitor when diagnostics trace is active."
   :type '(repeat symbol)
   :group 'context-navigator)
@@ -354,7 +354,7 @@ Set to 0 or nil to disable polling (event-based refresh still works)."
   :type '(repeat symbol) :group 'context-navigator)
 
 (defun context-navigator-view--header (state)
-  "Compute compact header title from STATE.
+  "Compute compact header title from STATE (robust against stale structs).
 
 Rules:
 - Items mode: [<project>: <group>] when group is active, otherwise [<project>]
@@ -362,16 +362,18 @@ Rules:
 - Global (no project): use ~ as project name → items: [~: <group>] / groups: [~]
 
 Note: status toggles [→gptel:on/off] [auto-proj:on/off] are rendered in the header-line."
-  (let* ((root (context-navigator-state-last-project-root state))
-         (group (context-navigator-state-current-group-slug state))
-         (proj-name (if root
+  (let* ((root (and (context-navigator-state-p state)
+                    (ignore-errors (context-navigator-state-last-project-root state))))
+         (group (and (context-navigator-state-p state)
+                     (ignore-errors (context-navigator-state-current-group-slug state))))
+         (proj-name (if (and (stringp root) (not (string-empty-p root)))
                         (file-name-nondirectory (directory-file-name root))
                       "~")))
     (cond
      ((eq context-navigator-view--mode 'groups)
       (format "[%s]" proj-name))
      (t
-      (if group
+      (if (and (stringp group) (not (string-empty-p group)))
           (format "[%s: %s]" proj-name group)
         (format "[%s]" proj-name))))))
 
@@ -611,26 +613,32 @@ model generation changed."
   "Keymap attached to the title line to support mouse/TAB/RET collapse/expand.")
 
 (defun context-navigator-view--headerline-format ()
-  "Return title string for Navigator header-line (project[: group]) plus filter segment."
-  (let* ((title (and (fboundp 'context-navigator-title--compute)
-                     (context-navigator-title--compute)))
-         (s (copy-sequence (or title "")))
-         (seg (and (fboundp 'context-navigator-view--filter-header-segment)
-                   (context-navigator-view--filter-header-segment))))
-    (when (and (stringp s) (> (length s) 0))
-      (when (and (boundp 'context-navigator-view--title-line-keymap)
-                 (keymapp context-navigator-view--title-line-keymap))
-        (add-text-properties
-         0 (length s)
-         (list 'mouse-face 'mode-line-highlight
-               'help-echo (and (fboundp 'context-navigator-i18n)
-                               (context-navigator-i18n :title-toggle-hint))
-               'keymap context-navigator-view--title-line-keymap
-               'local-map context-navigator-view--title-line-keymap)
-         s)))
-    (if (and (stringp seg) (> (length seg) 0))
-        (concat s "   " seg)
-      s)))
+  "Return title string for Navigator header-line (project[: group]) plus filter segment.
+
+Be robust: if the title compute returns nil/empty for any reason, fall back to a
+cheap text-only header built from core state."
+  (let* ((s (condition-case _err
+                (and (fboundp 'context-navigator-title--compute)
+                     (context-navigator-title--compute))
+              (error nil)))
+         (seg (ignore-errors
+                (and (fboundp 'context-navigator-view--filter-header-segment)
+                     (context-navigator-view--filter-header-segment)))))
+    ;; Fallback when title compute failed or returned an empty string.
+    (unless (and (stringp s) (> (length s) 0))
+      (let* ((st   (ignore-errors (context-navigator--state-get)))
+             (root (and st (ignore-errors (context-navigator-state-last-project-root st))))
+             (slug (and st (ignore-errors (context-navigator-state-current-group-slug st))))
+             (proj (if (and (stringp root) (not (string-empty-p root)))
+                       (file-name-nondirectory (directory-file-name root))
+                     "~")))
+        (setq s (if (and (stringp slug) (not (string-empty-p slug)))
+                    (format "  [%s: %s]" proj slug)
+                  (format "  [%s]" proj)))))
+    (let ((title (or s "")))
+      (if (and (stringp seg) (> (length seg) 0))
+          (concat title "   " seg)
+        title))))
 
 (defvar context-navigator-view--group-line-keymap
   (let ((m (make-sparse-keymap)))
