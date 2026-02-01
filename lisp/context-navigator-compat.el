@@ -10,6 +10,24 @@
 
 (require 'cl-lib)
 
+;; Ensure project tracking vars are bound early to avoid void-variable errors
+(unless (boundp 'context-navigator-project--last-root)
+  (defvar context-navigator-project--last-root nil))
+(unless (boundp 'context-navigator-project--last-switch-time)
+  (defvar context-navigator-project--last-switch-time 0.0))
+
+;; Soft-bind Stats split buffer to prevent early hook errors before the module is loaded.
+(unless (boundp 'context-navigator-stats-split--buffer)
+  (defvar context-navigator-stats-split--buffer nil))
+
+;; Also soft-bind project hook flags/counters to survive partial/mixed loads
+(unless (boundp 'context-navigator-project--hooks-installed)
+  (defvar context-navigator-project--hooks-installed nil))
+(unless (boundp 'context-navigator-project--hook-error-count)
+  (defvar context-navigator-project--hook-error-count 0))
+(unless (boundp 'context-navigator-project--hook-error-last-time)
+  (defvar context-navigator-project--hook-error-last-time 0.0))
+
 ;; Provide a minimal `cl-copy-struct' fallback when absent.
 (unless (fboundp 'cl-copy-struct)
   (defun cl-copy-struct (obj)

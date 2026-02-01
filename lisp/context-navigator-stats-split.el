@@ -10,6 +10,8 @@
 
 ;;; Code:
 
+(require 'context-navigator-compat)
+
 (require 'cl-lib)
 (require 'subr-x)
 (require 'context-navigator-events)
@@ -580,22 +582,24 @@ Tabs:
       (let* ((buf (window-buffer w))
              (tw (max 30 (window-body-width w))))
         (with-current-buffer buf
-          ;; Всегда восстанавливаем последний выбранный таб перед рендером,
-          ;; чтобы изменения модели не сбрасывали вкладку на Summary.
           (setq-local context-navigator-stats-split--active-tab context-navigator-stats-split--last-active-tab)
-          (let ((inhibit-read-only t)
-                (lines (context-navigator-stats-split--render-lines tw)))
-            (erase-buffer)
-            ;; Insert lines without trailing newline
-            (let ((i 0) (n (length lines)))
-              (while (< i n)
-                (insert (or (nth i lines) ""))
-                (setq i (1+ i))
-                (when (< i n) (insert "\n"))))
-            ;; Zebra background disabled per user request.
-            ;; Fit height to content immediately after rendering, like Groups split
-            (when-let ((navw (context-navigator-stats-split--nav-window)))
-              (context-navigator-stats-split--fit-window w navw))))))))
+          (let ((inhibit-read-only t))
+            (condition-case err
+                (let ((lines (context-navigator-stats-split--render-lines tw)))
+                  (erase-buffer)
+                  ;; Insert lines without trailing newline
+                  (let ((i 0) (n (length lines)))
+                    (while (< i n)
+                      (insert (or (nth i lines) ""))
+                      (setq i (1+ i))
+                      (when (< i n) (insert "\n"))))
+                  (when-let ((navw (context-navigator-stats-split--nav-window)))
+                    (context-navigator-stats-split--fit-window w navw)))
+              (error
+               (erase-buffer)
+               (insert "Stats unavailable")
+               (message "context-navigator: stats-split render error: %s"
+                        (error-message-string err))))))))))
 
 (defun context-navigator-stats-split--install-subs ()
   "Subscribe to events that should refresh the Stats split (idempotent)."

@@ -21,6 +21,7 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'context-navigator-core)       ;; ensure core vars/compat are available early
 (require 'context-navigator-model)
 (require 'context-navigator-project)
 (require 'context-navigator-log)

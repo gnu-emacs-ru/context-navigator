@@ -11,13 +11,49 @@
 
 ;;; Code:
 
+(require 'context-navigator-compat)
+
 (require 'cl-lib)
 (require 'subr-x)
 (require 'context-navigator-events)
 
+;; Defensive: ensure internal vars are always bound even under partial loads
+;; (e.g., mixed/old .elc) so hooks don't error-storm and freeze Emacs.
 (defvar context-navigator-project--hooks-installed nil)
 (defvar context-navigator-project--last-root nil)
 (defvar context-navigator-project--last-switch-time 0.0)
+(defvar context-navigator-project--hook-error-count 0)
+(defvar context-navigator-project--hook-error-last-time 0.0)
+
+(defun context-navigator-project--ensure-vars ()
+  "Ensure internal tracking vars are bound (defensive against partial/old loads)."
+  (unless (boundp 'context-navigator-project--hooks-installed)
+    (defvar context-navigator-project--hooks-installed nil))
+  (unless (boundp 'context-navigator-project--last-root)
+    (defvar context-navigator-project--last-root nil))
+  (unless (boundp 'context-navigator-project--last-switch-time)
+    (defvar context-navigator-project--last-switch-time 0.0))
+  (unless (boundp 'context-navigator-project--hook-error-count)
+    (defvar context-navigator-project--hook-error-count 0))
+  (unless (boundp 'context-navigator-project--hook-error-last-time)
+    (defvar context-navigator-project--hook-error-last-time 0.0)))
+
+(defun context-navigator-project--handle-hook-error (err where)
+  "Handle ERR from a project hook WHERE, throttling and disabling hooks on bursts."
+  (context-navigator-project--ensure-vars)
+  (let* ((now (float-time))
+         (dt (- now (or context-navigator-project--hook-error-last-time 0.0))))
+    (setq context-navigator-project--hook-error-last-time now)
+    (setq context-navigator-project--hook-error-count
+          (if (< dt 1.0)
+              (1+ (or context-navigator-project--hook-error-count 0))
+            1))
+    ;; If we error repeatedly, disable hooks to keep Emacs responsive.
+    (when (>= (or context-navigator-project--hook-error-count 0) 5)
+      (setq context-navigator-project--hook-error-count 0)
+      (ignore-errors (context-navigator-project-teardown-hooks))
+      (message "[context-navigator] project hooks disabled after repeated errors (%s): %S"
+               where err))))
 
 (defun context-navigator-project--now () (float-time))
 
@@ -175,6 +211,8 @@ sidebar is focused.
 
 Ignore events coming from child frames (posframe/popups) and
 when the current buffer is a minibuffer or a corfu internal buffer."
+  ;; Defensive: ensure tracking vars exist even under mixed/old .elc loads
+  (context-navigator-project--ensure-vars)
   (unless (or (context-navigator-project--child-frame-p)
               (minibufferp (current-buffer))
               (context-navigator-project--corfu-buffer-p (current-buffer)))
@@ -205,6 +243,8 @@ the current frame so auto-project continues to follow real work buffers even whi
 the sidebar is focused.
 
 Skip child frames (e.g., posframe popups), minibuffer windows and corfu buffers."
+  ;; Defensive: ensure tracking vars exist even under mixed/old .elc loads
+  (context-navigator-project--ensure-vars)
   (let ((win (selected-window)))
     (unless (or (context-navigator-project--child-frame-p (selected-frame))
                 (minibufferp (window-buffer win))
@@ -226,6 +266,8 @@ Skip child frames (e.g., posframe popups), minibuffer windows and corfu buffers.
 
 (defun context-navigator-project-setup-hooks ()
   "Install lightweight hooks to track project changes."
+  ;; Defensive: ensure tracking vars are present before we toggle the flag
+  (context-navigator-project--ensure-vars)
   (unless context-navigator-project--hooks-installed
     (add-hook 'buffer-list-update-hook #'context-navigator-project--on-buffer-list-update)
     (add-hook 'window-selection-change-functions #'context-navigator-project--on-window-selection-change)

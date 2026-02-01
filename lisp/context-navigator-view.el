@@ -13,7 +13,9 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'context-navigator-compat)
 (require 'seq)
+(require 'context-navigator-core)
 (require 'context-navigator-events)
 (require 'context-navigator-render)
 (require 'context-navigator-model)
@@ -478,59 +480,72 @@ very small, cheap preloader view immediately (no icons, no sorting, no file
 checks) so project switching feels responsive while the data loads in the
 background."
   (catch 'context-navigator-view--render
-    (let* ((state (context-navigator--state-get))
-           (header (context-navigator-view--header state))
-           (win (get-buffer-window (current-buffer) 'visible))
-           (total (or (and win (window-body-width win))
-                      (and (boundp 'context-navigator-view-width)
-                           (symbol-value 'context-navigator-view-width))
-                      33))
-           ;; Components for early-exit render key
-           (gen (or (and (context-navigator-state-p state)
-                         (context-navigator-state-generation state))
-                    0))
-           (mode context-navigator-view--mode)
-           ;; Use sxhash-equal to produce a stable-ish fingerprint of gptel keys list
-           (gptel-hash (sxhash-equal context-navigator-view--gptel-keys))
-           ;; Use cached openable count (may be nil) — normalize to integer and plus marker.
-           (openable (or context-navigator-view--openable-count 0))
-           (plus (and context-navigator-view--openable-plus t))
-           (push-on (and (boundp 'context-navigator--push-to-gptel)
-                         context-navigator--push-to-gptel))
-           (auto-on (and (boundp 'context-navigator--auto-project-switch)
-                         context-navigator--auto-project-switch))
-           ;; Include groups list fingerprint in groups mode so list changes force rerender.
-           (groups-hash (and (eq mode 'groups)
-                             (sxhash-equal context-navigator-view--groups)))
-           ;; Include filter state so live filter typing forces re-render
-           (fmode context-navigator-view--filter-mode)
-           (fquery (or context-navigator-view--filter-query ""))
-           ;; Compose key (include session flags so toggles force a refresh)
-           (key (list gen mode total gptel-hash openable plus header fmode fquery push-on auto-on context-navigator-view--collapsed-p groups-hash)))
-      (when (equal key context-navigator-view--last-render-key)
-        (ignore-errors
-          (context-navigator-debug :trace :ui "render: skip (same key) %S" key)))
-      (unless (equal key context-navigator-view--last-render-key)
-        (ignore-errors
-          (context-navigator-debug :trace :ui "render: run key=%S mode=%s total=%s" key mode total))
-        (setq context-navigator-view--last-render-key key)
-        ;; Fast path: show minimal preloader when loading or when progress is reported by events.
-        (when (or (and (context-navigator-state-p state)
-                       (context-navigator-state-loading-p state))
-                  context-navigator-view--load-progress)
-          (ignore-errors
-            (context-navigator-debug :trace :ui
-                                     "render: preloader loading-p=%s progress=%s"
-                                     (and (context-navigator-state-p state)
-                                          (context-navigator-state-loading-p state))
-                                     context-navigator-view--load-progress))
-          (context-navigator-view--render-loading state header total)
-          (throw 'context-navigator-view--render nil))
-        (context-navigator-view-render-items state header total)
-        ;; Refresh pinned title (posframe) after render
-        (ignore-errors
-          (when (fboundp 'context-navigator-title-refresh)
-            (context-navigator-title-refresh)))))))
+    (condition-case err
+        (let* ((state (context-navigator--state-get))
+               (header (context-navigator-view--header state))
+               (win (get-buffer-window (current-buffer) 'visible))
+               (total (or (and win (window-body-width win))
+                          (and (boundp 'context-navigator-view-width)
+                               (symbol-value 'context-navigator-view-width))
+                          33))
+               ;; Components for early-exit render key
+               (gen (or (and (context-navigator-state-p state)
+                             (context-navigator-state-generation state))
+                        0))
+               (mode context-navigator-view--mode)
+               ;; Stable fingerprint of gptel keys list
+               (gptel-hash (sxhash-equal context-navigator-view--gptel-keys))
+               ;; Use cached openable count (may be nil) — normalize to integer and plus marker.
+               (openable (or context-navigator-view--openable-count 0))
+               (plus (and context-navigator-view--openable-plus t))
+               (push-on (and (boundp 'context-navigator--push-to-gptel)
+                             context-navigator--push-to-gptel))
+               (auto-on (and (boundp 'context-navigator--auto-project-switch)
+                             context-navigator--auto-project-switch))
+               ;; Stabilize groups hash by sorting (slug . display) pairs to avoid render loops
+               (groups-hash
+                (and (eq mode 'groups)
+                     (let* ((pairs (cl-loop for pl in (or context-navigator-view--groups '())
+                                            collect (cons (plist-get pl :slug)
+                                                          (plist-get pl :display))))
+                            (sorted (cl-sort (copy-sequence pairs) #'string< :key #'car)))
+                       (sxhash-equal sorted))))
+               ;; Include filter state so live filter typing forces re-render
+               (fmode context-navigator-view--filter-mode)
+               (fquery (or context-navigator-view--filter-query ""))
+               ;; Compose key (include session flags so toggles force a refresh)
+               (key (list gen mode total gptel-hash openable plus header fmode fquery
+                          push-on auto-on context-navigator-view--collapsed-p groups-hash)))
+          (when (equal key context-navigator-view--last-render-key)
+            (ignore-errors
+              (context-navigator-debug :trace :ui "render: skip (same key) %S" key)))
+          (unless (equal key context-navigator-view--last-render-key)
+            (ignore-errors
+              (context-navigator-debug :trace :ui "render: run key=%S mode=%s total=%s" key mode total))
+            (setq context-navigator-view--last-render-key key)
+            ;; Fast path: show minimal preloader when loading or when progress is reported by events.
+            (when (or (and (context-navigator-state-p state)
+                           (context-navigator-state-loading-p state))
+                      context-navigator-view--load-progress)
+              (ignore-errors
+                (context-navigator-debug :trace :ui
+                                         "render: preloader loading=%s progress=%s"
+                                         (and (context-navigator-state-p state)
+                                              (context-navigator-state-loading-p state))
+                                         context-navigator-view--load-progress))
+              (context-navigator-view--render-loading state header total)
+              (throw 'context-navigator-view--render nil))
+            (context-navigator-view-render-items state header total)
+            ;; Refresh pinned title (posframe) after render
+            (ignore-errors
+              (when (fboundp 'context-navigator-title-refresh)
+                (context-navigator-title-refresh)))))
+      (error
+       ;; Prevent render-time errors from cascading into endless redisplay loops
+       (message "context-navigator: render error: %s" (error-message-string err))
+       (setq context-navigator-view--last-render-key nil)
+       (context-navigator-render-apply-to-buffer (current-buffer) (list "" "" "" "Render error" ""))
+       nil))))
 
 (defun context-navigator-view--render-if-visible ()
   "Render sidebar if its buffer is visible."

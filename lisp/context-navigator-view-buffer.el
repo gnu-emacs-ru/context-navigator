@@ -69,17 +69,13 @@ SIZE is interpreted as:
            (if (window-live-p w)
                (setq win w)
              (setq win (context-navigator--buffer-mode--split 'right split-size)))))
-        ('split-right
-         (setq win (context-navigator--buffer-mode--split 'right split-size)))
-        ('split-below
-         (setq win (context-navigator--buffer-mode--split 'below split-size)))
-        (_
-         (setq win (context-navigator--buffer-mode--split 'right split-size)))))
+        ('split-right (setq win (context-navigator--buffer-mode--split 'right split-size)))
+        ('split-below (setq win (context-navigator--buffer-mode--split 'below split-size)))
+        (_            (setq win (context-navigator--buffer-mode--split 'right split-size)))))
     (when (window-live-p win)
       (set-window-buffer win buf)
       (when (window-live-p win)
         (set-window-parameter win 'context-navigator-view 'buffer))
-
       (with-current-buffer buf
         ;; Ensure major mode keymap exists even if view wasn't fully loaded yet
         (unless (and (boundp 'context-navigator-view-mode-map)
@@ -88,9 +84,16 @@ SIZE is interpreted as:
         (when (fboundp 'context-navigator-view-mode)
           (context-navigator-view-mode))
         (setq-local buffer-read-only t)
-        (context-navigator-view-events-install)
-        (when (fboundp 'context-navigator-view--render)
-          (context-navigator-view--render)))
+        (condition-case err
+            (progn
+              (context-navigator-view-events-install)
+              (when (fboundp 'context-navigator-view--render)
+                (context-navigator-view--render)))
+          (error
+           (message "context-navigator: buffer-open render error: %s"
+                    (error-message-string err))
+           (erase-buffer)
+           (insert "Navigator: render failed"))))
       (select-window win))
     win))
 

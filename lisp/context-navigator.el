@@ -26,6 +26,7 @@
 
 ;;; Code:
 
+(require 'context-navigator-compat)
 
 ;; Public commands from core (autoloaded)
 ;;;###autoload
@@ -202,5 +203,14 @@ Ensure session flags follow defaults. Initial project switch is handled by the m
 
 ;; Optional which-key integration (auto-applies labels from keyspec)
 (ignore-errors (require 'context-navigator-which-key nil t))
+
+;;; Diagnostics helpers
+;;;###autoload
+(autoload 'context-navigator-diagnostics-clean-caches "context-navigator-diagnostics"
+  "Delete Context Navigator .elc and .eln caches (safe) and report counts." t)
+;;;###autoload
+(autoload 'context-navigator-diagnostics-hard-restart "context-navigator-diagnostics"
+  "Clean caches and hot-restart Context Navigator (unload/reload)." t)
+
 (provide 'context-navigator)
 ;;; context-navigator.el ends here
